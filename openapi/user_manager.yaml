@@ -1,0 +1,342 @@
+openapi: 3.0.1
+info:
+  description: Description of a user manager API
+  title: User Manager API
+  version: 1.0.0
+servers:
+- description: User manager currently runs typically locally on the host machine
+  url: http://localhost:19749
+paths:
+  /users:
+    delete:
+      operationId: deleteUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserData'
+        description: Field username is required, rest is ignored
+        required: true
+      responses:
+        "204":
+          description: Resource deleted successfully
+        "401":
+          description: User not authorized
+        "403":
+          description: Admin access needed for this operation
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      security:
+      - BearerAuth:
+        - admin
+      summary: Delete a user and all its data from the database
+      tags:
+      - users
+    patch:
+      operationId: changeRoles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserData'
+        description: Field username is optional, newroles and obsroles are optional,
+          but should contain at least one element, password is ignored
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdentity'
+          description: Roles successfully changed
+        "400":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: Bad data given to the request, returns the error message of
+            the server
+        "401":
+          description: User not authorized
+        "403":
+          description: Admin access needed for this operation
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      security:
+      - BearerAuth: []
+      summary: Change roles of user, admin roles can only be changed by an admin
+      tags:
+      - users
+    post:
+      operationId: registerUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserData'
+        description: Fields username and password are required, newroles is optional,
+          obsroles is ignored
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdentity'
+          description: User successfully created
+        "400":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: Bad data given to the request, returns the error message of
+            the server
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      summary: Register a new user, needs no authentication
+      tags:
+      - users
+    put:
+      operationId: changePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserData'
+        description: Fields username and password are required, password contains
+          new password, rest is ignored
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdentity'
+          description: Password successfully changed
+        "400":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: Bad data given to the request, returns the error message of
+            the server
+        "401":
+          description: User not authorized
+        "403":
+          description: Admin access needed for this operation
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      security:
+      - BearerAuth: []
+      summary: Change the password of the user, authentication provided either by
+        token of user or of an admin
+      tags:
+      - users
+  /users/authenticate:
+    post:
+      operationId: authenticateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserData'
+        description: Field username and password are required, rest is ignored
+        required: true
+      responses:
+        "200":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                format: password
+                type: string
+          description: User authenticated, required jwt token returned
+        "400":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: Bad data given to the request, returns the error message of
+            the server
+        "401":
+          description: User not authorized
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      summary: Authenticate a registered user by password, returns a jwt token
+      tags:
+      - users
+  /backup:
+    get:
+      operationId: backup
+      responses:
+        "200":
+          content:
+            application/zip:
+              schema:
+                format: binary
+                type: string
+          description: A backup of the database data as zip file
+        "401":
+          description: User not authorized
+        "403":
+          description: Admin access needed for this operation
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      security:
+      - BearerAuth:
+        - admin
+      summary: Create a backup of the database
+      tags:
+      - infrastructure
+    put:
+      operationId: restore
+      requestBody:
+        content:
+          application/zip:
+            schema:
+              format: binary
+              type: string
+        description: The data to restore in the database
+        required: true
+      responses:
+        "204":
+          description: Database restored successfully, old data deleted
+        "400":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: Bad data given to the request, returns the error message of
+            the server
+        "401":
+          description: User not authorized
+        "403":
+          description: Admin access needed for this operation
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      security:
+      - BearerAuth:
+        - admin
+      summary: Restore a backup and replace existing database
+      tags:
+      - infrastructure
+  /licenses:
+    get:
+      operationId: license
+      responses:
+        "200":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The attribution information as text
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+          description: The request resulted in an unexpected exception, returns the
+            error message of the server
+      summary: Returns the attribution information on the used Open Source Software
+      tags:
+      - infrastructure
+components:
+  responses:
+    SuccessfullyDeleted:
+      description: Resource deleted successfully
+    NoContent:
+      description: The requested collection is empty
+    Unauthorized:
+      description: User not authorized
+    BadRequest:
+      content:
+        text/plain; charset=utf-8:
+          schema:
+            type: string
+      description: Bad data given to the request, returns the error message of the
+        server
+    AdminAccess:
+      description: Admin access needed for this operation
+    InternalError:
+      content:
+        text/plain; charset=utf-8:
+          schema:
+            type: string
+      description: The request resulted in an unexpected exception, returns the error
+        message of the server
+  schemas:
+    UserData:
+      example:
+        obsroles:
+        - obsroles
+        - obsroles
+        password: password
+        newroles:
+        - newroles
+        - newroles
+        username: username
+      properties:
+        username:
+          type: string
+        password:
+          format: password
+          type: string
+        newroles:
+          items:
+            type: string
+          type: array
+        obsroles:
+          items:
+            type: string
+          type: array
+      type: object
+    RoleList:
+      items:
+        type: string
+      type: array
+    UserIdentity:
+      example:
+        userid: userid
+      properties:
+        userid:
+          type: string
+      type: object
+  securitySchemes:
+    BearerAuth:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http

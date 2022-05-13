@@ -1,4 +1,6 @@
 #!/bin/sh
+cp -v ../main.go ../main.go.bck
+cp -v ../go.mod ../go.mod.bck
 ./openapi-generator-cli \
     generate \
     -i ../../ProjectTimeManager2.Api/user-mgr.yaml \
@@ -10,3 +12,4 @@
 cp -v ../api/openapi.yaml ../openapi/user_manager.yaml
 cp -v ../README.md ../rest/Readme.md
 git checkout HEAD -- ../README.md
+echo "Merge generated stuff with existing changes"

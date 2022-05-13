@@ -1,0 +1,11 @@
+#!/bin/sh
+./openapi-generator-cli \
+    generate \
+    -i ../../ProjectTimeManager2.Api/user-mgr.yaml \
+    -g go-server \
+    -o .. \
+    -v \
+    --additional-properties=onlyInterfaces=false,packageName=rest,serverPort=19749,sourceFolder=rest
+
+#    -c ./openapi_config.json
+

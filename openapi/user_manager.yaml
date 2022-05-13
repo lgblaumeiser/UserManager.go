@@ -1,6 +1,11 @@
-openapi: 3.0.1
+openapi: 3.0.3
 info:
+  contact:
+    email: lars@lgblaumeiser.de
+    name: lgblaumeiser
   description: Description of a user manager API
+  license:
+    name: MIT
   title: User Manager API
   version: 1.0.0
 servers:
@@ -165,10 +170,9 @@ paths:
       responses:
         "200":
           content:
-            text/plain; charset=utf-8:
+            application/json:
               schema:
-                format: password
-                type: string
+                $ref: '#/components/schemas/inline_response_200'
           description: User authenticated, required jwt token returned
         "400":
           content:
@@ -302,37 +306,51 @@ components:
     UserData:
       example:
         obsroles:
-        - obsroles
-        - obsroles
-        password: password
+        - tool_user;tool_admin
+        - tool_user;tool_admin
+        password: $0MeP@sswOrD
         newroles:
-        - newroles
-        - newroles
-        username: username
+        - tool_user;tool_admin
+        - tool_user;tool_admin
+        username: my_username
       properties:
         username:
+          example: my_username
           type: string
         password:
+          example: $0MeP@sswOrD
           format: password
           type: string
         newroles:
           items:
+            example: tool_user;tool_admin
             type: string
           type: array
         obsroles:
           items:
+            example: tool_user;tool_admin
             type: string
           type: array
       type: object
     RoleList:
       items:
+        example: tool_user;tool_admin
         type: string
       type: array
     UserIdentity:
       example:
-        userid: userid
+        userid: my_username
       properties:
         userid:
+          example: my_username
+          type: string
+      type: object
+    inline_response_200:
+      example:
+        jwt_token: jwt_token
+      properties:
+        jwt_token:
+          description: The token for authentification and authorisation
           type: string
       type: object
   securitySchemes:

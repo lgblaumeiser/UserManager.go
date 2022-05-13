@@ -4,13 +4,12 @@ api/openapi.yaml
 main.go
 rest/api.go
 rest/api_infrastructure.go
-rest/api_infrastructure_service.go
 rest/api_users.go
-rest/api_users_service.go
 rest/error.go
 rest/helpers.go
 rest/impl.go
 rest/logger.go
+rest/model_inline_response_200.go
 rest/model_user_data.go
 rest/model_user_identity.go
 rest/routers.go

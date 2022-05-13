@@ -1,15 +1,18 @@
 #!/bin/sh
-cp -v ../main.go ../main.go.bck
-cp -v ../go.mod ../go.mod.bck
+cd ..
+cp -v main.go main.go.bck
+cp -v go.mod go.mod.bck
 ./openapi-generator-cli \
     generate \
-    -i ../../ProjectTimeManager2.Api/user-mgr.yaml \
+    -i ../ProjectTimeManager2.Api/user-mgr.yaml \
     -g go-server \
-    -o .. \
+    -o . \
     -v \
     --additional-properties=onlyInterfaces=false,packageName=rest,serverPort=19749,sourceFolder=rest
 
-cp -v ../api/openapi.yaml ../openapi/user_manager.yaml
-cp -v ../README.md ../rest/Readme.md
-git checkout HEAD -- ../README.md
+cp -v api/openapi.yaml openapi/user_manager.yaml
+cp -v README.md rest/Readme.md
+git checkout HEAD -- README.md
+statik -src=$(pwd)/openapi
+cd tools
 echo "Merge generated stuff with existing changes"

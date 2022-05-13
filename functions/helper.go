@@ -5,28 +5,29 @@ import (
 	"strings"
 )
 
-func IsCleanString(raw string) bool {
-	if len(raw) == 0 {
-		return false
-	}
+const RoleSeparator = ";"
 
-	clean := strings.TrimSpace(raw)
-	if len(clean) != len(raw) {
-		return false
-	}
-	return true
+func IsCleanString(raw string) bool {
+	return len(raw) > 0 && len(raw) == len(strings.TrimSpace(raw))
 }
 
 var isAlphaNumeric = regexp.MustCompile(`^[A-Za-z0-9-_.]+$`).MatchString
 
 func IsCleanAlphanumericString(raw string) bool {
-	if !IsCleanString(raw) {
-		return false
-	}
+	return len(raw) > 0 && isAlphaNumeric(raw)
+}
 
-	if !isAlphaNumeric(raw) {
-		return false
-	}
+var isRoleList = regexp.MustCompile(`^[A-Za-z0-9-_.;]+$`).MatchString
 
-	return true
+func IsRoleString(raw string) bool {
+	return len(raw) > 0 && isRoleList(raw)
+}
+
+func EncodeRoles(roles *[]string) string {
+	return strings.Join(*roles, RoleSeparator)
+}
+
+func DecodeRoles(roles string) *[]string {
+	rolelist := strings.Split(roles, RoleSeparator)
+	return &rolelist
 }

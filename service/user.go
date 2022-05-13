@@ -5,5 +5,5 @@ type User struct {
 
 	Password string
 
-	Roles []string
+	Roles string
 }

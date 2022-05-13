@@ -7,12 +7,12 @@ import (
 )
 
 var testUsername = "happyuser"
-var testRoles = []string{"some_admin", "some_role", "another_role"}
+var testRoles = "some_admin;some_role;another_role"
 
 func TestTokenCleanPath(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	token, err := CreateToken(testUsername, &testRoles)
+	token, err := CreateToken(testUsername, testRoles)
 	if err != nil {
 		t.Errorf("Create Token failed: %s", err.Error())
 	}
@@ -24,12 +24,12 @@ func TestTokenCleanPath(t *testing.T) {
 	if puser != testUsername {
 		t.Errorf("Expexted username: %s ; found username: %s", testUsername, puser)
 	}
-	if len(testRoles) != len(*proles) {
-		t.Errorf("Role size mismatch, expected %d, found %d", len(testRoles), len(*proles))
+	if len(testRoles) != len(proles) {
+		t.Errorf("Role size mismatch, expected %s, found %s", testRoles, proles)
 	}
-	for _, role := range *proles {
+	for _, role := range *DecodeRoles(proles) {
 		found := false
-		for _, inner := range testRoles {
+		for _, inner := range *DecodeRoles(testRoles) {
 			if role == inner {
 				found = true
 			}
@@ -40,38 +40,22 @@ func TestTokenCleanPath(t *testing.T) {
 	}
 }
 
-func TestWithEmptyUsername(t *testing.T) {
+func TestWithWrongData(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	_, err := CreateToken("", &testRoles)
+	_, err := CreateToken("", testRoles)
 	if err == nil {
 		t.Errorf("Create Token should have failed")
 	}
-}
-
-func TestWithWhitespaceUsername(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	_, err := CreateToken("  \t", &testRoles)
+	_, err = CreateToken("  \t", testRoles)
 	if err == nil {
 		t.Errorf("Create Token should have failed")
 	}
-}
-
-func TestWithNilRoles(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	_, err := CreateToken(testUsername, nil)
-	if err == nil {
-		t.Errorf("Create Token should have failed")
-	}
-}
-
-func TestWithEmptyRoles(t *testing.T) {
-	initializeTesteeJwt(t)
-
-	emptyList := make([]string, 1)
-	_, err := CreateToken(testUsername, &emptyList)
+	_, err = CreateToken(testUsername, "")
 	if err == nil {
 		t.Errorf("Create Token should have failed")
 	}
@@ -80,7 +64,7 @@ func TestWithEmptyRoles(t *testing.T) {
 func TestWithWrongKey(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	token, err := CreateToken(testUsername, &testRoles)
+	token, err := CreateToken(testUsername, testRoles)
 	if err != nil {
 		t.Errorf("Token creation failed: %s", err.Error())
 	}

@@ -9,7 +9,7 @@ type MemoryStore struct {
 }
 
 func CreateMemoryStore() *MemoryStore {
-	store := MemoryStore{userMap: make(map[string]*service.User)}
+	store := MemoryStore{userMap: map[string]*service.User{}}
 	return &store
 }
 

@@ -1,7 +1,7 @@
 package service_test
 
 import (
-	"strings"
+	"fmt"
 	"testing"
 
 	uuid "github.com/google/uuid"
@@ -23,824 +23,616 @@ var adminPassword = "admin"
 var adminRoles = []string{"user_admin"}
 
 func TestUserAuthentificationService(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	username, err := service.RegisterUserService(testUser, testPassword, &testRoles)
-	if err != nil {
-		t.Fatalf("Unexpected issue in register User: %s", err.Error())
-	}
-	if username != testUser {
-		t.Fatalf("Username is not given properly, expected '%s', found '%s'", testUser, username)
+	username, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	token, err := service.AuthenticateUser(username, testPassword)
-	if err != nil {
-		t.Fatalf("Authenticate failed: %s", err.Error())
-	}
-	username, roles, err := libs.ParseToken(token)
-	if err != nil {
-		t.Fatalf("Token validation issue: %s", err.Error())
-	}
-	if username != testUser {
-		t.Fatalf("Token username does not match, expected '%s', found '%s'", testUser, username)
-	}
-	if !compareRoles(&testRoles, roles) {
-		t.Fatalf("Token roles do not match, expected '%s', found '%s'", strings.Join(testRoles, ";"), strings.Join(*roles, ";"))
+	token, err := us.AuthenticateUser(username, testPassword)
+	if ok, message := checkAuthenticationResult(testUser, &testRoles, token, err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser(testUser, altPassword)
-	if err == nil {
-		t.Fatalf("Authentication with wrong password should fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.Unauthorized {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.Unauthorized, libs.RetrieveErrorCode(err))
+	_, err = us.AuthenticateUser(testUser, altPassword)
+	if ok, message := checkError(err, libs.Unauthorized); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser(altUser, testPassword)
-	if err == nil {
-		t.Fatalf("Authentication with unknown user should fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-
-	_, err = service.AuthenticateUser("", testPassword)
-	if err == nil {
-		t.Fatalf("Authentication with empty user should fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-
-	_, err = service.AuthenticateUser("$tr@ngr", testPassword)
-	if err == nil {
-		t.Fatalf("Authentication with non alphanumeric user should fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-
-	_, err = service.AuthenticateUser(" strange", testPassword)
-	if err == nil {
-		t.Fatalf("Authentication with whitespaced user should fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-
-	_, err = service.AuthenticateUser(testUser, "")
-	if err == nil {
-		t.Fatalf("Authentication with empty password should fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-
-	_, err = service.AuthenticateUser(testUser, "\tsuper")
-	if err == nil {
-		t.Fatalf("Authentication with whitespaced password should fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.AuthenticateUser(altUser, testPassword)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestRegisterUserWrongData(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	_, err := service.RegisterUserService("", testPassword, &testRoles)
-	if err == nil {
-		t.Errorf("Empty username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err := us.RegisterUser("", testPassword, &testRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService("str@ngeUser", testPassword, &testRoles)
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser("str@ngeUser", testPassword, &testRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService("\tsomething", testPassword, &testRoles)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser("\tsomething", testPassword, &testRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService("some thing", testPassword, &testRoles)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser("some thing", testPassword, &testRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, "", &testRoles)
-	if err == nil {
-		t.Errorf("Empty password should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, "", &testRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, "\tstrange", &testRoles)
-	if err == nil {
-		t.Errorf("Whitespaced password should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, "\tstrange", &testRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, testPassword, nil)
-	if err == nil {
-		t.Errorf("Roles nil should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, testPassword, nil)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, testPassword, &[]string{})
-	if err == nil {
-		t.Errorf("Empty roles should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, testPassword, &[]string{})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, testPassword, &[]string{""})
-	if err == nil {
-		t.Errorf("Empty role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, testPassword, &[]string{""})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, testPassword, &[]string{" somerole"})
-	if err == nil {
-		t.Errorf("Whitespaced role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, testPassword, &[]string{" somerole"})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, testPassword, &[]string{"some role"})
-	if err == nil {
-		t.Errorf("Whitespaced role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, testPassword, &[]string{"some role"})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, testPassword, &[]string{"role_admin"})
-	if err == nil {
-		t.Errorf("Usage of admin role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.Forbidden {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.Forbidden, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, testPassword, &[]string{"role_admin"})
+	if ok, message := checkError(err, libs.Forbidden); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestAuthenticationWrongDate(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	_, err := service.AuthenticateUser("", testPassword)
-	if err == nil {
-		t.Errorf("Empty username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err := us.AuthenticateUser("", testPassword)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser("str@ngeUser", testPassword)
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.AuthenticateUser("str@ngeUser", testPassword)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser("\tsomething", testPassword)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.AuthenticateUser("\tsomething", testPassword)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser("some thing", testPassword)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.AuthenticateUser("some thing", testPassword)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser(testUser, "")
-	if err == nil {
-		t.Errorf("Empty password should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.AuthenticateUser(testUser, "")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser(testUser, "\tstrange")
-	if err == nil {
-		t.Errorf("Whitespaced password should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.AuthenticateUser(testUser, "\tstrange")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestRegisterMultipleUsers(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	username, err := service.RegisterUserService(testUser, testPassword, &testRoles)
-	if err != nil {
-		t.Fatalf("Unexpected issue in register User: %s", err.Error())
-	}
-	if username != testUser {
-		t.Fatalf("Username is not given properly, expected '%s', found '%s'", testUser, username)
+	username, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	username2, err := service.RegisterUserService(altUser, altPassword, &altRoles)
-	if err != nil {
-		t.Fatalf("Unexpected issue in register User: %s", err.Error())
-	}
-	if username2 != altUser {
-		t.Fatalf("Username is not given properly, expected '%s', found '%s'", altUser, username2)
+	username2, err := us.RegisterUser(altUser, altPassword, &altRoles)
+	if ok, message := checkUsernameResult(altUser, username2, err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.RegisterUserService(testUser, altPassword, &altRoles)
-	if err == nil {
-		t.Fatalf("Register user a second time has to fail")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.RegisterUser(testUser, altPassword, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.AuthenticateUser(username, testPassword)
-	if err != nil {
-		t.Fatalf("Authenticate failed: %s", err.Error())
+	_, err = us.AuthenticateUser(username, testPassword)
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestChangePassword(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	_, err := service.RegisterUserService(testUser, testPassword, &testRoles)
-	if err != nil {
-		t.Fatalf("Error creating user: %s", err.Error())
-	}
-
-	_, err = service.RegisterUserService(altUser, altPassword, &altRoles)
-	if err != nil {
-		t.Fatalf("Error creating user: %s", err.Error())
+	username, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	username, err := service.ChangePasswordService(testUser, "ChangedPW", testUser)
-	if err != nil {
-		t.Fatalf("Unexpected error changing password: %s", err.Error())
-	}
-	if username != testUser {
-		t.Fatalf("Unexpected username returned, expected %s, found %s", testUser, username)
-	}
-	_, err = service.AuthenticateUser(testUser, "ChangedPW")
-	if err != nil {
-		t.Fatalf("Authentication failed with new password: %s", err.Error())
+	username, err = us.RegisterUser(altUser, altPassword, &altRoles)
+	if ok, message := checkUsernameResult(altUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	username, err = service.ChangePasswordService(testUser, "AnotherChanged", adminUser)
-	if err != nil {
-		t.Fatalf("Unexpected error changing password: %s", err.Error())
-	}
-	if username != testUser {
-		t.Fatalf("Unexpected username returned, expected %s, found %s", testUser, username)
-	}
-	_, err = service.AuthenticateUser(testUser, "AnotherChanged")
-	if err != nil {
-		t.Fatalf("Authentication failed with new password: %s", err.Error())
+	username, err = us.ChangePassword(testUser, "ChangedPW", testUser)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, "Yacp", altUser)
-	if err == nil {
-		t.Fatalf("Error expected for change password with different but non-admin requestor")
-	}
-	if libs.RetrieveErrorCode(err) != libs.Forbidden {
-		t.Fatalf("Wrong error received, expected %d, received %d", libs.Forbidden, libs.RetrieveErrorCode(err))
-	}
-	_, err = service.AuthenticateUser(testUser, "AnotherChanged")
-	if err != nil {
-		t.Fatalf("Authentication failed with new password: %s", err.Error())
+	_, err = us.AuthenticateUser(testUser, "ChangedPW")
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, "yacp", "unknown")
-	if err == nil {
-		t.Fatalf("Error expected for change password with unknown requestor")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error received, expected %d, received %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-	_, err = service.AuthenticateUser(testUser, "AnotherChanged")
-	if err != nil {
-		t.Fatalf("Authentication failed with new password: %s", err.Error())
+	username, err = us.ChangePassword(testUser, "AnotherChanged", adminUser)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService("unknown", "yacp", adminUser)
-	if err == nil {
-		t.Fatalf("Error expected for change password with unknown user")
+	_, err = us.AuthenticateUser(testUser, "AnotherChanged")
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
 	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error received, expected %d, received %d", libs.BadData, libs.RetrieveErrorCode(err))
+
+	_, err = us.ChangePassword(testUser, "Yacp", altUser)
+	if ok, message := checkError(err, libs.Forbidden); !ok {
+		t.Fatal(message)
+	}
+
+	_, err = us.AuthenticateUser(testUser, "AnotherChanged")
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
+	}
+
+	_, err = us.ChangePassword(testUser, "yacp", "unknown")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	_, err = us.AuthenticateUser(testUser, "AnotherChanged")
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
+	}
+
+	_, err = us.ChangePassword("unknown", "yacp", adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestChangePasswordWrongData(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	_, err := service.ChangePasswordService("", testPassword, adminUser)
-	if err == nil {
-		t.Errorf("Empty username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err := us.ChangePassword("", testPassword, adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService("str@ngeUser", testPassword, adminUser)
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword("str@ngeUser", testPassword, adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService("\tsomething", testPassword, adminUser)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword("\tsomething", testPassword, adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService("some thing", testPassword, adminUser)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword("some thing", testPassword, adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, "", adminUser)
-	if err == nil {
-		t.Errorf("Empty password should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword(testUser, "", adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, "\tstrange", adminUser)
-	if err == nil {
-		t.Errorf("Whitespaced password should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword(testUser, "\tstrange", adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, testPassword, "")
-	if err == nil {
-		t.Errorf("Empty requestor should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword(testUser, testPassword, "")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, testPassword, "str@ngeUser")
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword(testUser, testPassword, "str@ngeUser")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, testPassword, "\tsomething")
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword(testUser, testPassword, "\tsomething")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangePasswordService(testUser, testPassword, "some thing")
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangePassword(testUser, testPassword, "some thing")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestChangeRoles(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	_, err := service.RegisterUserService(testUser, testPassword, &testRoles)
-	if err != nil {
-		t.Fatalf("Error creating user: %s", err.Error())
-	}
-
-	_, err = service.RegisterUserService(altUser, altPassword, &altRoles)
-	if err != nil {
-		t.Fatalf("Error creating user: %s", err.Error())
+	username, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	username, err := service.ChangeRoles(testUser, testUser, &altRoles, &[]string{testRoles[1], testRoles[2]})
-	if err != nil {
-		t.Fatalf("Unexpected error changing roles: %s", err.Error())
-	}
-	if username != testUser {
-		t.Fatalf("Unexpected username returned, expected %s, found %s", testUser, username)
-	}
-	expectedRoles := []string{testRoles[0], altRoles[0], altRoles[1]}
-	foundRoles := extractRolesForUserPW(testUser, testPassword, t)
-	if !compareRoles(&expectedRoles, foundRoles) {
-		t.Fatalf("Token roles do not match, expected '%s', found '%s'", strings.Join(expectedRoles, ";"), strings.Join(*foundRoles, ";"))
+	username, err = us.RegisterUser(altUser, altPassword, &altRoles)
+	if ok, message := checkUsernameResult(altUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	username, err = service.ChangeRoles(testUser, adminUser, &[]string{testRoles[1], testRoles[2]}, &altRoles)
-	if err != nil {
-		t.Fatalf("Unexpected error changing roles: %s", err.Error())
+	username, err = us.ChangeRoles(testUser, testUser, &altRoles, &[]string{testRoles[1], testRoles[2]})
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
-	if username != testUser {
-		t.Fatalf("Unexpected username returned, expected %s, found %s", testUser, username)
-	}
-	foundRoles = extractRolesForUserPW(testUser, testPassword, t)
-	if !compareRoles(&testRoles, foundRoles) {
-		t.Fatalf("Token roles do not match, expected '%s', found '%s'", strings.Join(testRoles, ";"), strings.Join(*foundRoles, ";"))
+	if ok, message := checkRolesForUserPW(testUser, testPassword, &[]string{testRoles[0], altRoles[0], altRoles[1]}, &us); !ok {
+		t.Fatal(message)
 	}
 
-	username, err = service.ChangeRoles(testUser, adminUser, &[]string{}, &[]string{testRoles[0], testRoles[1], testRoles[2]})
-	if err == nil {
-		t.Fatalf("Error expected changing roles with no roles left")
+	username, err = us.ChangeRoles(testUser, adminUser, &[]string{testRoles[1], testRoles[2]}, &altRoles)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
-	foundRoles = extractRolesForUserPW(testUser, testPassword, t)
-	if !compareRoles(&testRoles, foundRoles) {
-		t.Fatalf("Token roles do not match, expected '%s', found '%s'", strings.Join(testRoles, ";"), strings.Join(*foundRoles, ";"))
-	}
-
-	_, err = service.ChangeRoles(testUser, altUser, &altRoles, &[]string{testRoles[1], testRoles[2]})
-	if err == nil {
-		t.Fatalf("Error expected for change roles with different but non-admin requestor")
-	}
-	if libs.RetrieveErrorCode(err) != libs.Forbidden {
-		t.Fatalf("Wrong error received, expected %d, received %d", libs.Forbidden, libs.RetrieveErrorCode(err))
-	}
-	foundRoles = extractRolesForUserPW(testUser, testPassword, t)
-	if !compareRoles(&testRoles, foundRoles) {
-		t.Fatalf("Token roles do not match, expected '%s', found '%s'", strings.Join(testRoles, ";"), strings.Join(*foundRoles, ";"))
+	if ok, message := checkRolesForUserPW(testUser, testPassword, &testRoles, &us); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, "unknown", &altRoles, &[]string{testRoles[1], testRoles[2]})
-	if err == nil {
-		t.Fatalf("Error expected for change roles with unknown requestor")
+	username, err = us.ChangeRoles(testUser, adminUser, &[]string{}, &[]string{testRoles[0], testRoles[1], testRoles[2]})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error received, expected %d, received %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-	foundRoles = extractRolesForUserPW(testUser, testPassword, t)
-	if !compareRoles(&testRoles, foundRoles) {
-		t.Fatalf("Token roles do not match, expected '%s', found '%s'", strings.Join(testRoles, ";"), strings.Join(*foundRoles, ";"))
+	if ok, message := checkRolesForUserPW(testUser, testPassword, &testRoles, &us); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles("unknown", adminUser, &altRoles, &[]string{testRoles[1], testRoles[2]})
-	if err == nil {
-		t.Fatalf("Error expected for change roles with unknown requestor")
+	_, err = us.ChangeRoles(testUser, altUser, &altRoles, &[]string{testRoles[1], testRoles[2]})
+	if ok, message := checkError(err, libs.Forbidden); !ok {
+		t.Fatal(message)
 	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error received, expected %d, received %d", libs.BadData, libs.RetrieveErrorCode(err))
-	}
-
-	username, err = service.ChangeRoles(testUser, testUser, &adminRoles, &[]string{})
-	if err == nil {
-		t.Fatalf("Adding admin roles should only be possible by admin user")
-	}
-	if libs.RetrieveErrorCode(err) != libs.Forbidden {
-		t.Fatalf("Wrong error received, expected %d, received %d", libs.Forbidden, libs.RetrieveErrorCode(err))
+	if ok, message := checkRolesForUserPW(testUser, testPassword, &testRoles, &us); !ok {
+		t.Fatal(message)
 	}
 
-	username, err = service.ChangeRoles(testUser, adminUser, &adminRoles, &[]string{})
-	if err != nil {
-		t.Fatalf("Unexpected error changing roles: %s", err.Error())
+	_, err = us.ChangeRoles(testUser, "unknown", &altRoles, &[]string{testRoles[1], testRoles[2]})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
-	if username != testUser {
-		t.Fatalf("Unexpected username returned, expected %s, found %s", testUser, username)
+	if ok, message := checkRolesForUserPW(testUser, testPassword, &testRoles, &us); !ok {
+		t.Fatal(message)
 	}
-	expectedRoles = []string{testRoles[0], testRoles[1], testRoles[2], adminRoles[0]}
-	foundRoles = extractRolesForUserPW(testUser, testPassword, t)
-	if !compareRoles(&expectedRoles, foundRoles) {
-		t.Fatalf("Token roles do not match, expected '%s', found '%s'", strings.Join(expectedRoles, ";"), strings.Join(*foundRoles, ";"))
+
+	_, err = us.ChangeRoles("unknown", adminUser, &altRoles, &[]string{testRoles[1], testRoles[2]})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	username, err = us.ChangeRoles(testUser, testUser, &adminRoles, &[]string{})
+	if ok, message := checkError(err, libs.Forbidden); !ok {
+		t.Fatal(message)
+	}
+
+	username, err = us.ChangeRoles(testUser, adminUser, &adminRoles, &[]string{})
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
+	}
+	if ok, message := checkRolesForUserPW(testUser, testPassword, &[]string{testRoles[0], testRoles[1], testRoles[2], adminRoles[0]}, &us); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestChangeRolesWrongData(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	_, err := service.ChangeRoles("", adminUser, &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Empty username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err := us.ChangeRoles("", adminUser, &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles("str@ngeUser", adminUser, &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles("str@ngeUser", adminUser, &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles("\tsomething", adminUser, &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles("\tsomething", adminUser, &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles("some thing", adminUser, &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles("some thing", adminUser, &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, "", &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Empty requestor should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, "", &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, "str@ngeUser", &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, "str@ngeUser", &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, "\tsomething", &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, "\tsomething", &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, "some thing", &testRoles, &altRoles)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, "some thing", &testRoles, &altRoles)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, nil, &[]string{})
-	if err == nil {
-		t.Errorf("Roles nil should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, nil, &[]string{})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, &[]string{""}, &[]string{})
-	if err == nil {
-		t.Errorf("Empty role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, &[]string{""}, &[]string{})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, &[]string{" somerole"}, &[]string{})
-	if err == nil {
-		t.Errorf("Whitespaced role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, &[]string{" somerole"}, &[]string{})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, &[]string{"some role"}, &[]string{})
-	if err == nil {
-		t.Errorf("Whitespaced role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, &[]string{"some role"}, &[]string{})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, &[]string{}, nil)
-	if err == nil {
-		t.Errorf("Roles nil should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, nil)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{""})
-	if err == nil {
-		t.Errorf("Empty role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{""})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{" somerole"})
-	if err == nil {
-		t.Errorf("Whitespaced role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{" somerole"})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{"some role"})
-	if err == nil {
-		t.Errorf("Whitespaced role should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{"some role"})
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestDeleteUser(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	_, err := service.RegisterUserService(testUser, testPassword, &testRoles)
-	if err != nil {
-		t.Fatalf("Error creating user: %s", err.Error())
-	}
-
-	_, err = service.RegisterUserService(altUser, altPassword, &altRoles)
-	if err != nil {
-		t.Fatalf("Error creating user: %s", err.Error())
+	username, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, testUser)
-	if err == nil {
-		t.Fatalf("Delete user not allowed for user itself, admin required")
-	}
-	if libs.RetrieveErrorCode(err) != libs.Forbidden {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.Forbidden, libs.RetrieveErrorCode(err))
+	username, err = us.RegisterUser(altUser, altPassword, &altRoles)
+	if ok, message := checkUsernameResult(altUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, altUser)
-	if err == nil {
-		t.Fatalf("Delete user not allowed for non-admin user, admin required")
-	}
-	if libs.RetrieveErrorCode(err) != libs.Forbidden {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.Forbidden, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser(testUser, testUser)
+	if ok, message := checkError(err, libs.Forbidden); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, "unknown")
-	if err == nil {
-		t.Fatalf("Delete user not possible if requestor is unknown")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Fatalf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser(testUser, altUser)
+	if ok, message := checkError(err, libs.Forbidden); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser("unknown", adminUser)
-	if err != nil {
-		t.Fatalf("Unexpected Error: %s", err.Error())
+	err = us.DeleteUser(testUser, "unknown")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	_, err = service.ChangeRoles(altUser, adminUser, &[]string{"user_admin"}, &[]string{})
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
+	err = us.DeleteUser("unknown", adminUser)
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, adminUser)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
+	username, err = us.ChangeRoles(altUser, adminUser, &[]string{"user_admin"}, &[]string{})
+	if ok, message := checkUsernameResult(altUser, username, err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(altUser, adminUser)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
+	err = us.DeleteUser(testUser, adminUser)
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(adminUser, adminUser)
-	if err == nil {
-		t.Fatalf("Expected error, because 'admin' user is not allowed to be removed")
+	err = us.DeleteUser(altUser, adminUser)
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
+	}
+
+	err = us.DeleteUser(adminUser, adminUser)
+	if ok, message := checkMissingError(err); !ok {
+		t.Fatal(message)
 	}
 }
 
 func TestDeleteUserWrongData(t *testing.T) {
-	initializeTesteeUserService(t)
+	us := initializeTesteeUserService(t)
 
-	err := service.DeleteUser("", adminUser)
-	if err == nil {
-		t.Errorf("Empty username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err := us.DeleteUser("", adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser("str@ngeUser", adminUser)
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser("str@ngeUser", adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser("\tsomething", adminUser)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser("\tsomething", adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser("some thing", adminUser)
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser("some thing", adminUser)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, "")
-	if err == nil {
-		t.Errorf("Empty requestor should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser(testUser, "")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, "str@ngeUser")
-	if err == nil {
-		t.Errorf("Strange username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser(testUser, "str@ngeUser")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, "\tsomething")
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser(testUser, "\tsomething")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 
-	err = service.DeleteUser(testUser, "some thing")
-	if err == nil {
-		t.Errorf("Whitespaced username should result in error")
-	}
-	if libs.RetrieveErrorCode(err) != libs.BadData {
-		t.Errorf("Wrong error code, expected %d, found %d", libs.BadData, libs.RetrieveErrorCode(err))
+	err = us.DeleteUser(testUser, "some thing")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
 	}
 }
 
-func extractRolesForUserPW(username string, password string, t *testing.T) *[]string {
-	token, err := service.AuthenticateUser(username, password)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
-
-	_, roles, err := libs.ParseToken(token)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
-
-	return roles
+func checkRolesForUserPW(expected string, password string, expectedRoles *[]string, us *service.UserService) (bool, string) {
+	token, err := us.AuthenticateUser(expected, password)
+	return checkAuthenticationResult(expected, expectedRoles, token, err)
 }
 
-func compareRoles(testRoles *[]string, roles *[]string) bool {
-	if len(*testRoles) != len(*roles) {
-		return false
+func checkUsernameResult(expected string, found string, err error) (bool, string) {
+	if err != nil {
+		return false, unexpectedError(err)
 	}
-	for _, outer := range *testRoles {
+	if found != expected {
+		return false, stringMismatch(expected, found)
+	}
+	return true, ""
+}
+
+func checkAuthenticationResult(expectedName string, expectedRoles *[]string, token string, err error) (bool, string) {
+	if err != nil {
+		return false, unexpectedError(err)
+	}
+
+	username, roles, err := libs.ParseToken(token)
+	if err != nil {
+		return false, unexpectedError(err)
+	}
+	if username != expectedName {
+		return false, stringMismatch(expectedName, username)
+	}
+	return rolesUnmatched(expectedRoles, roles)
+}
+
+func rolesUnmatched(expected *[]string, found string) (bool, string) {
+	roleList := libs.DecodeRoles(found)
+	if len(*expected) != len(*roleList) {
+		return false, roleMismatch(expected, found)
+	}
+	for _, outer := range *expected {
 		ok := false
-		for _, inner := range *roles {
+		for _, inner := range *roleList {
 			if inner == outer {
 				ok = true
 			}
 		}
 		if !ok {
-			return false
+			return false, roleMismatch(expected, found)
 		}
 	}
-	return true
+	return true, ""
 }
 
-func initializeTesteeUserService(t *testing.T) {
+func checkWrongData(err error) (bool, string) {
+	return checkError(err, libs.BadData)
+}
+
+func checkError(err error, expected int) (bool, string) {
+	if ok, message := checkMissingError(err); !ok {
+		return ok, message
+	}
+	return errorCodeMatch(expected, err)
+}
+
+func checkMissingError(err error) (bool, string) {
+	if err == nil {
+		return false, missingError
+	}
+	return true, ""
+}
+
+func errorCodeMatch(expected int, found error) (bool, string) {
+	errorCode := libs.RetrieveErrorCode(found)
+	if errorCode == expected {
+		return true, ""
+	} else {
+		return false, fmt.Sprintf("Value mismatch: expected: %d, found: %d", expected, errorCode)
+	}
+}
+
+func roleMismatch(expected *[]string, found string) string {
+	return stringMismatch(libs.EncodeRoles(expected), found)
+}
+
+func stringMismatch(expected string, found string) string {
+	return fmt.Sprintf("Value mismatch: expected: %s, found: %s", expected, found)
+}
+
+func checkUnexpectedError(err error) (bool, string) {
+	if err != nil {
+		return false, unexpectedError(err)
+	}
+	return true, ""
+}
+
+const missingError = "Error expected at this point"
+
+func unexpectedError(err error) string {
+	return fmt.Sprintf("Unexpected error: %s", err.Error())
+}
+
+func initializeTesteeUserService(t *testing.T) service.UserService {
 	key, err := uuid.NewRandom()
 	if err != nil {
 		t.Fatalf("Cannot create key: %s", err.Error())
@@ -848,5 +640,5 @@ func initializeTesteeUserService(t *testing.T) {
 	libs.InitializeJwtService([]byte(key.String()))
 
 	store := store.CreateMemoryStore()
-	service.InitializeUserService(store)
+	return service.NewUserService(store)
 }

@@ -16,11 +16,11 @@ func InitializeJwtService(key []byte) {
 	jwtKey = key
 }
 
-func CreateToken(username string, roles *[]string) (string, error) {
+func CreateToken(username string, roles string) (string, error) {
 	if !IsCleanAlphanumericString(username) {
 		return "", IllegalArgument("username must contain a trimmed string with content")
 	}
-	if !hasContent(roles) {
+	if !IsRoleString(roles) {
 		return "", IllegalArgument("at least one roles must be defined")
 	}
 
@@ -33,7 +33,7 @@ func CreateToken(username string, roles *[]string) (string, error) {
 	claims := jwt.MapClaims{
 		"id":       tokenID,
 		"username": username,
-		"roles":    encodeRoles(roles),
+		"roles":    roles,
 		"exp":      expirationDate.Unix(),
 		"iat":      time.Now().Unix(),
 	}
@@ -47,48 +47,27 @@ func CreateToken(username string, roles *[]string) (string, error) {
 	return tokenString, nil
 }
 
-func hasContent(items *[]string) bool {
-	if items == nil {
-		return false
-	}
-	found := false
-	for _, value := range *items {
-		if len(strings.TrimSpace(value)) > 0 {
-			found = true
-		}
-	}
-	return found
-}
-
-func ParseToken(tokenString string) (string, *[]string, error) {
+func ParseToken(tokenString string) (string, string, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 	if err != nil {
-		return "", nil, TokenValidationError(err)
+		return "", "", TokenValidationError(err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", nil, TokenValidationError(err)
+		return "", "", TokenValidationError(err)
 	}
 
 	if !token.Valid {
-		return "", nil, TokenExpired()
+		return "", "", TokenExpired()
 	}
 
 	username := claims["username"].(string)
 	if len(strings.TrimSpace(username)) == 0 {
-		return "", nil, TokenValidation("Username not defined in token")
+		return "", "", TokenValidation("Username not defined in token")
 	}
-	roles := decodeRoles(claims["roles"].(string))
-	return username, &roles, nil
-}
-
-func encodeRoles(roles *[]string) string {
-	return strings.Join(*roles, ";")
-}
-
-func decodeRoles(roles string) []string {
-	return strings.Split(roles, ";")
+	roles := claims["roles"].(string)
+	return username, roles, nil
 }

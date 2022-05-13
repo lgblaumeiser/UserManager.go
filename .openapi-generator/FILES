@@ -1,7 +1,6 @@
 Dockerfile
 README.md
 api/openapi.yaml
-go.mod
 main.go
 rest/api.go
 rest/api_infrastructure.go

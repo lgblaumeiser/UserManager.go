@@ -3,12 +3,16 @@
 package functions
 
 import (
+	"errors"
+	"regexp"
 	"strings"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt"
 	uuid "github.com/google/uuid"
 )
+
+var emptyList = []string{}
 
 const tokenDurationInHours = 18
 
@@ -18,24 +22,25 @@ func InitializeJwtService(key []byte) {
 	jwtKey = key
 }
 
-func CreateToken(username string, roles string) (string, error) {
+func CreateToken(username string, roles *[]string) (string, *RestError) {
 	if !IsCleanAlphanumericString(username) {
-		return "", IllegalArgument("username must contain a trimmed string with content")
+		return "", IllegalArgument("username")
 	}
-	if !IsRoleString(roles) {
-		return "", IllegalArgument("at least one roles must be defined")
+	roleString := encodeRoles(roles)
+	if !isRoleString(roleString) {
+		return "", IllegalArgument("roles")
 	}
 
 	expirationDate := time.Now().Add(tokenDurationInHours * time.Hour)
 	tokenID, err := uuid.NewRandom()
 	if err != nil {
-		return "", UnexpectedBehaviorError(err)
+		return "", UnexpectedBehavior(&err)
 	}
 
 	claims := jwt.MapClaims{
 		"id":       tokenID,
 		"username": username,
-		"roles":    roles,
+		"roles":    roleString,
 		"exp":      expirationDate.Unix(),
 		"iat":      time.Now().Unix(),
 	}
@@ -43,33 +48,56 @@ func CreateToken(username string, roles string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		return "", UnexpectedBehaviorError(err)
+		return "", UnexpectedBehavior(&err)
 	}
 
 	return tokenString, nil
 }
 
-func ParseToken(tokenString string) (string, string, error) {
+func ParseToken(tokenString string) (string, *[]string, *RestError) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 	if err != nil {
-		return "", "", TokenValidationError(err)
+		return "", &emptyList, UnexpectedBehavior(&err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", "", TokenValidationError(err)
+		return "", &emptyList, UnexpectedBehavior(&err)
 	}
 
 	if !token.Valid {
-		return "", "", TokenExpired()
+		return "", &emptyList, TokenExpired()
 	}
 
 	username := claims["username"].(string)
 	if len(strings.TrimSpace(username)) == 0 {
-		return "", "", TokenValidation("Username not defined in token")
+		wrapped := errors.New("Username not defined in token")
+		return "", &emptyList, UnexpectedBehavior(&wrapped)
 	}
 	roles := claims["roles"].(string)
-	return username, roles, nil
+	if !isRoleString(roles) {
+		wrapped := errors.New("Roles not defined in token")
+		return "", &emptyList, UnexpectedBehavior(&wrapped)
+	}
+	return username, decodeRoles(roles), nil
+}
+
+var isRoleList = regexp.MustCompile(`^[A-Za-z0-9-_.;]+$`).MatchString
+
+func isRoleString(raw string) bool {
+	return len(raw) > 0 && isRoleList(raw)
+}
+
+func encodeRoles(roles *[]string) string {
+	if roles == nil || len(*roles) == 0 {
+		return ""
+	}
+	return strings.Join(*roles, RoleSeparator)
+}
+
+func decodeRoles(roles string) *[]string {
+	rolelist := strings.Split(roles, RoleSeparator)
+	return &rolelist
 }

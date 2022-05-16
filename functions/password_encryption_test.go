@@ -28,8 +28,8 @@ func TestPasswordCheckShouldFailForWrongPassword(t *testing.T) {
 	if err == nil {
 		t.Errorf("The check of a password that does not match the encrypted must fail")
 	}
-	if RetrieveErrorCode(err) != Unauthorized {
-		t.Errorf("Wrong error code, should be %d, is %d", Unauthorized, RetrieveErrorCode(err))
+	if (*err).ErrorCode != Unauthorized {
+		t.Errorf("Wrong error code, should be %d, is %d", Unauthorized, (*err).ErrorCode)
 	}
 }
 
@@ -38,7 +38,7 @@ func TestEmptyPasswordShouldFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Empty password should fail")
 	}
-	if RetrieveErrorCode(err) != BadData {
-		t.Errorf("Wrong error code, should be %d, is %d", BadData, RetrieveErrorCode(err))
+	if (*err).ErrorCode != BadRequest {
+		t.Errorf("Wrong error code, should be %d, is %d", BadRequest, (*err).ErrorCode)
 	}
 }

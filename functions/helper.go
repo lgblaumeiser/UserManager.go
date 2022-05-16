@@ -19,17 +19,25 @@ func IsCleanAlphanumericString(raw string) bool {
 	return len(raw) > 0 && isAlphaNumeric(raw)
 }
 
-var isRoleList = regexp.MustCompile(`^[A-Za-z0-9-_.;]+$`).MatchString
+func TwoStringListsHaveSameContent(left *[]string, right *[]string) bool {
+	if len(*left) != len(*right) {
+		return false
+	}
 
-func IsRoleString(raw string) bool {
-	return len(raw) > 0 && isRoleList(raw)
+	for _, item := range *left {
+		if !Contains(right, item) {
+			return false
+		}
+	}
+
+	return true
 }
 
-func EncodeRoles(roles *[]string) string {
-	return strings.Join(*roles, RoleSeparator)
-}
-
-func DecodeRoles(roles string) *[]string {
-	rolelist := strings.Split(roles, RoleSeparator)
-	return &rolelist
+func Contains(list *[]string, content string) bool {
+	for _, item := range *list {
+		if item == content {
+			return true
+		}
+	}
+	return false
 }

@@ -48,43 +48,32 @@ func TestIsAlphanumericString(t *testing.T) {
 	}
 }
 
-func TestIsRoleString(t *testing.T) {
-	if !IsRoleString("aBZ7_.78-gT;fjksdafh") {
-		t.Errorf("string check failed")
+func TestTwoStringListsHaveSameContent(t *testing.T) {
+	list1 := []string{"one", "two", "three"}
+	list2 := []string{"three", "two", "one"}
+	list3 := []string{"three", "four", "five"}
+
+	if !TwoStringListsHaveSameContent(&list1, &list1) {
+		t.Errorf("list check failed")
 	}
 
-	if !IsRoleString("_aBZ7gT") {
-		t.Errorf("string check failed")
+	if !TwoStringListsHaveSameContent(&list1, &list2) {
+		t.Errorf("list check failed")
 	}
 
-	if IsRoleString("a$6783;hgz") {
-		t.Errorf("string check failed")
-	}
-
-	if IsRoleString("  6dfahkj;\t65dfhj") {
-		t.Errorf("string check failed")
+	if TwoStringListsHaveSameContent(&list1, &list3) {
+		t.Errorf("list check failed")
 	}
 }
 
-func TestRoleListEncoding(t *testing.T) {
-	roles := []string{"role_1", "role_2", "role_3"}
-	roleString := "role_1;role_2;role_3"
+func TestContains(t *testing.T) {
+	list1 := []string{"one", "two", "three"}
 
-	encoded := EncodeRoles(&roles)
-	if encoded != roleString {
-		t.Errorf("Encoding roles failed, expected %s, found %s", roleString, encoded)
+	if !Contains(&list1, "one") {
+		t.Errorf("list check failed")
 	}
 
-	for _, outer := range *DecodeRoles(encoded) {
-		found := false
-		for _, inner := range roles {
-			if outer == inner {
-				found = true
-			}
-		}
-		if !found {
-			t.Errorf("Role not found %s", outer)
-		}
+	if Contains(&list1, "four") {
+		t.Errorf("list check failed")
 	}
-
 }

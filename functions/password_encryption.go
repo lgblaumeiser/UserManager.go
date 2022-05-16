@@ -8,22 +8,22 @@ import (
 
 const cryptCost = 16
 
-func EncryptPassword(password string) (string, error) {
+func EncryptPassword(password string) (string, *RestError) {
 	if !IsCleanString(password) {
-		return "", IllegalArgument("given password string is empty or has surrounding whitespaces")
+		return "", IllegalArgument("password")
 	}
 	encryptedPW, err := crypt.GenerateFromPassword([]byte(password), cryptCost)
 	if err != nil {
-		return "", UnexpectedBehaviorError(err)
+		return "", UnexpectedBehavior(&err)
 	}
 
 	return string(encryptedPW), nil
 }
 
-func CheckPassword(encrypted string, given string) error {
+func CheckPassword(encrypted string, given string) *RestError {
 	err := crypt.CompareHashAndPassword([]byte(encrypted), []byte(given))
 	if err != nil {
-		return UnauthorizedUserError(err)
+		return UnauthorizedUserError(&err)
 	}
 	return nil
 }

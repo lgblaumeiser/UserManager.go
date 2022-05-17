@@ -40,3 +40,11 @@ func (m *MemoryStore) DeleteUser(user *service.User) error {
 	delete(m.userMap, user.Username)
 	return nil
 }
+
+func (m *MemoryStore) GetUsers() *[]service.User {
+	users := []service.User{}
+	for _, user := range m.userMap {
+		users = append(users, *user)
+	}
+	return &users
+}

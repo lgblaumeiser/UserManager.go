@@ -27,11 +27,6 @@ type User struct {
 	Roles *[]string
 }
 
-type RequestResult struct {
-	Body        string
-	ErrorStatus *libs.RestError
-}
-
 func NewUserService(storeimpl UserStore) UserService {
 	usrv := UserService{storeimpl}
 
@@ -44,163 +39,208 @@ func NewUserService(storeimpl UserStore) UserService {
 	return usrv
 }
 
-func (us *UserService) RegisterUser(username string, password string, roles *[]string) RequestResult {
+func (us *UserService) RegisterUser(username string, password string, roles *[]string) (string, *libs.RestError) {
 	if !libs.IsCleanAlphanumericString(username) {
-		return RequestResult{"", libs.IllegalArgument("username")}
+		return "", libs.IllegalArgument("username")
 	}
 	if !libs.IsCleanString(password) {
-		return RequestResult{"", libs.IllegalArgument("password")}
+		return "", libs.IllegalArgument("password")
 	}
 	if !us.areCleanRoles(roles) {
-		return RequestResult{"", libs.IllegalArgument("roles")}
+		return "", libs.IllegalArgument("roles")
 	}
 	newRoles, err := us.addAndRemoveRoles(&[]string{}, roles, &[]string{}, false)
 	if err != nil {
-		return RequestResult{"", err}
+		return "", err
 	}
 
 	encryptedPW, err := libs.EncryptPassword(password)
 	if err != nil {
-		return RequestResult{"", err}
+		return "", err
 	}
 
 	newUser := User{username, encryptedPW, newRoles}
 	user, ok, gerr := us.store.AddUser(&newUser)
 	if gerr != nil {
-		return RequestResult{"", libs.UnexpectedBehavior(&gerr)}
+		return "", libs.UnexpectedBehavior(&gerr)
 	}
 	if !ok {
-		return RequestResult{"", libs.IllegalArgument("user exists")}
+		return "", libs.IllegalArgument("user exists")
 	}
-	return RequestResult{user, nil}
+	return user, nil
 }
 
-func (us *UserService) ChangePassword(username string, password string, requestor string) RequestResult {
+func (us *UserService) ChangePassword(username string, password string, requestor string) (string, *libs.RestError) {
 	if !libs.IsCleanAlphanumericString(username) {
-		return RequestResult{"", libs.IllegalArgument("username")}
+		return "", libs.IllegalArgument("username")
 	}
 	if !libs.IsCleanString(password) {
-		return RequestResult{"", libs.IllegalArgument("password")}
+		return "", libs.IllegalArgument("password")
 	}
 	if !libs.IsCleanAlphanumericString(requestor) {
-		return RequestResult{"", libs.IllegalArgument("requestor")}
+		return "", libs.IllegalArgument("requestor")
 	}
 
 	userObj := us.store.GetUser(username)
 	if userObj == nil {
-		return RequestResult{"", libs.IllegalArgument("unknown user")}
+		return "", libs.IllegalArgument("unknown user")
 	}
 
 	_, err := us.properAdminAccess(userObj, requestor)
 	if err != nil {
-		return RequestResult{"", err}
+		return "", err
 	}
 
 	encryptedPW, err := libs.EncryptPassword(password)
 	if err != nil {
-		return RequestResult{"", err}
+		return "", err
 	}
 
 	changedUser := User{userObj.Username, encryptedPW, userObj.Roles}
 	user, gerr := us.store.StoreUser(&changedUser)
 	if gerr != nil {
-		return RequestResult{"", libs.UnexpectedBehavior(&gerr)}
+		return "", libs.UnexpectedBehavior(&gerr)
 	}
-	return RequestResult{user, nil}
+	return user, nil
 }
 
-func (us *UserService) ChangeRoles(username string, requestor string, newRoles *[]string, obsRoles *[]string) RequestResult {
+func (us *UserService) ChangeRoles(username string, requestor string, newRoles *[]string, obsRoles *[]string) (string, *libs.RestError) {
 	if !libs.IsCleanAlphanumericString(username) {
-		return RequestResult{"", libs.IllegalArgument("username")}
+		return "", libs.IllegalArgument("username")
 	}
 	if !libs.IsCleanAlphanumericString(requestor) {
-		return RequestResult{"", libs.IllegalArgument("requestor")}
+		return "", libs.IllegalArgument("requestor")
 	}
 	if !us.areCleanRoles(newRoles) {
-		return RequestResult{"", libs.IllegalArgument("newRoles")}
+		return "", libs.IllegalArgument("newRoles")
 	}
 	if !us.areCleanRoles(obsRoles) {
-		return RequestResult{"", libs.IllegalArgument("obsRoles")}
+		return "", libs.IllegalArgument("obsRoles")
 	}
 
 	userObj := us.store.GetUser(username)
 	if userObj == nil {
-		return RequestResult{"", libs.IllegalArgument("unknown user")}
+		return "", libs.IllegalArgument("unknown user")
 	}
 
 	admin, err := us.properAdminAccess(userObj, requestor)
 	if err != nil {
-		return RequestResult{"", err}
+		return "", err
 	}
 
 	changedRoles, err := us.addAndRemoveRoles(userObj.Roles, newRoles, obsRoles, admin)
 	if err != nil {
-		return RequestResult{"", err}
+		return "", err
 	}
 	if len(*changedRoles) == 0 {
-		return RequestResult{"", libs.IllegalArgument("no role left")}
+		return "", libs.IllegalArgument("no role left")
 	}
 
 	var changedUser = User{userObj.Username, userObj.Password, changedRoles}
 	user, gerr := us.store.StoreUser(&changedUser)
 	if gerr != nil {
-		return RequestResult{"", libs.UnexpectedBehavior(&gerr)}
+		return "", libs.UnexpectedBehavior(&gerr)
 	}
-	return RequestResult{user, nil}
+	return user, nil
 }
 
-func (us *UserService) DeleteUser(username string, requestor string) RequestResult {
+func (us *UserService) DeleteUser(username string, requestor string) *libs.RestError {
 	if !libs.IsCleanAlphanumericString(username) {
-		return RequestResult{"", libs.IllegalArgument("username")}
+		return libs.IllegalArgument("username")
 	}
 	if !libs.IsCleanAlphanumericString(requestor) {
-		return RequestResult{"", libs.IllegalArgument("requestor")}
+		return libs.IllegalArgument("requestor")
 	}
 
 	if username == adminUser {
-		return RequestResult{"", libs.IllegalArgument("admin user cannot be deleted")}
+		return libs.IllegalArgument("admin user cannot be deleted")
 	}
 
 	userObj := us.store.GetUser(username)
 	if userObj == nil {
-		return RequestResult{"", nil}
+		return nil
 	}
 
 	admin, err := us.properAdminAccess(userObj, requestor)
 	if err != nil {
-		return RequestResult{"", err}
+		return err
 	}
 	if !admin {
-		return RequestResult{"", libs.MissingAdminRights()}
+		return libs.MissingAdminRights()
 	}
 
 	gerr := us.store.DeleteUser(userObj)
 	if err != nil {
-		return RequestResult{"", libs.UnexpectedBehavior(&gerr)}
+		return libs.UnexpectedBehavior(&gerr)
 	}
-	return RequestResult{"", nil}
+	return nil
 }
 
-func (us *UserService) AuthenticateUser(username string, password string) RequestResult {
+func (us *UserService) AuthenticateUser(username string, password string) (string, *libs.RestError) {
 	if !libs.IsCleanAlphanumericString(username) {
-		return RequestResult{"", libs.IllegalArgument("username")}
+		return "", libs.IllegalArgument("username")
 	}
 	if !libs.IsCleanString(password) {
-		return RequestResult{"", libs.IllegalArgument("password")}
+		return "", libs.IllegalArgument("password")
 	}
 
 	userObj := us.store.GetUser(username)
 	if userObj == nil {
-		return RequestResult{"", libs.IllegalArgument("unknown user")}
+		return "", libs.IllegalArgument("unknown user")
 	}
 
 	err := libs.CheckPassword(userObj.Password, password)
 	if err != nil {
-		return RequestResult{"", err}
+		return "", err
 	}
 
 	user, err := libs.CreateToken(userObj.Username, userObj.Roles)
-	return RequestResult{user, err}
+	return user, err
+}
+
+func (us *UserService) Backup(requestor string) (*[]User, *libs.RestError) {
+	if !libs.IsCleanAlphanumericString(requestor) {
+		return nil, libs.IllegalArgument("requestor")
+	}
+
+	requestorObj := us.store.GetUser(requestor)
+	if !us.isAdmin(requestorObj) {
+		return nil, libs.MissingAdminRights()
+	}
+	return us.store.GetUsers(), nil
+}
+
+func (us *UserService) Restore(requestor string, users *[]User) *libs.RestError {
+	if !libs.IsCleanAlphanumericString(requestor) {
+		return libs.IllegalArgument("requestor")
+	}
+
+	requestorObj := us.store.GetUser(requestor)
+	if !us.isAdmin(requestorObj) {
+		return libs.MissingAdminRights()
+	}
+
+	for _, user := range *users {
+		existing := us.store.GetUser(user.Username)
+		if existing == nil {
+			_, _, err := us.store.AddUser(&user)
+			if err != nil {
+				return libs.UnexpectedBehavior(&err)
+			}
+		} else {
+			adaptedRoles, rerr := us.addAndRemoveRoles(user.Roles, existing.Roles, &[]string{}, true)
+			if rerr != nil {
+				return rerr
+			}
+			adaptedUser := User{user.Username, existing.Password, adaptedRoles}
+			_, err := us.store.StoreUser(&adaptedUser)
+			if err != nil {
+				return libs.UnexpectedBehavior(&err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (us *UserService) properAdminAccess(user *User, requestor string) (bool, *libs.RestError) {

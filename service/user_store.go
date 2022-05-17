@@ -3,6 +3,7 @@
 package service
 
 type UserStore interface {
+	AddUser(user *User) (string, bool, error)
 	StoreUser(user *User) (string, error)
 	GetUser(username string) *User
 	DeleteUser(user *User) error

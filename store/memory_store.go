@@ -15,6 +15,14 @@ func CreateMemoryStore() *MemoryStore {
 	return &store
 }
 
+func (m *MemoryStore) AddUser(user *service.User) (string, bool, error) {
+	if _, ok := m.userMap[user.Username]; ok {
+		return "", false, nil
+	}
+	m.userMap[user.Username] = user
+	return user.Username, true, nil
+}
+
 func (m *MemoryStore) StoreUser(user *service.User) (string, error) {
 	m.userMap[user.Username] = user
 	return user.Username, nil

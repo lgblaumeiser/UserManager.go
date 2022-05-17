@@ -4,12 +4,8 @@ package functions
 
 import (
 	"fmt"
+	"net/http"
 )
-
-const BadRequest = 400
-const Unauthorized = 401
-const Forbidden = 403
-const InternalServerError = 500
 
 const tokenExpired = "token expired"
 const unexpectedBehavior = "unexpected behavior"
@@ -28,31 +24,31 @@ func (e *RestError) Error() string {
 }
 
 func TokenExpired() *RestError {
-	return createError(Unauthorized, tokenExpired)
+	return createError(http.StatusUnauthorized, tokenExpired)
 }
 func UnexpectedBehavior(message *error) *RestError {
-	return createErrorWithWrapped(InternalServerError, unexpectedBehavior, message)
+	return createErrorWithWrapped(http.StatusInternalServerError, unexpectedBehavior, message)
 }
 
 func UnauthorizedUserError(message *error) *RestError {
-	return createErrorWithWrapped(Unauthorized, authenicationFailed, message)
+	return createErrorWithWrapped(http.StatusUnauthorized, authenicationFailed, message)
 }
 
 func UnauthorizedUser() *RestError {
-	return createError(Unauthorized, authenicationFailed)
+	return createError(http.StatusUnauthorized, authenicationFailed)
 }
 
 func MissingAdminRights() *RestError {
-	return createError(Forbidden, noSufficientRights)
+	return createError(http.StatusForbidden, noSufficientRights)
 }
 
 func IllegalArgument(message string) *RestError {
-	return createError(BadRequest, illegalData+message)
+	return createError(http.StatusBadRequest, illegalData+message)
 }
 
 func createErrorWithWrapped(code int, message string, wrapped *error) *RestError {
-	if code != BadRequest && code != Unauthorized && code != Forbidden {
-		code = InternalServerError
+	if code != http.StatusBadRequest && code != http.StatusUnauthorized && code != http.StatusForbidden {
+		code = http.StatusInternalServerError
 	}
 	newError := RestError{code, message, wrapped}
 	return &newError

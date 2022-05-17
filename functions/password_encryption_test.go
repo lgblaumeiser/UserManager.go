@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MIT
 package functions
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
 const testPassword = "My c00l Te$tpassword"
 
@@ -28,8 +31,8 @@ func TestPasswordCheckShouldFailForWrongPassword(t *testing.T) {
 	if err == nil {
 		t.Errorf("The check of a password that does not match the encrypted must fail")
 	}
-	if (*err).ErrorCode != Unauthorized {
-		t.Errorf("Wrong error code, should be %d, is %d", Unauthorized, (*err).ErrorCode)
+	if (*err).ErrorCode != http.StatusUnauthorized {
+		t.Errorf("Wrong error code, should be %d, is %d", http.StatusUnauthorized, (*err).ErrorCode)
 	}
 }
 
@@ -38,7 +41,7 @@ func TestEmptyPasswordShouldFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Empty password should fail")
 	}
-	if (*err).ErrorCode != BadRequest {
-		t.Errorf("Wrong error code, should be %d, is %d", BadRequest, (*err).ErrorCode)
+	if (*err).ErrorCode != http.StatusBadRequest {
+		t.Errorf("Wrong error code, should be %d, is %d", http.StatusBadRequest, (*err).ErrorCode)
 	}
 }

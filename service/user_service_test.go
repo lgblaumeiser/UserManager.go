@@ -4,6 +4,7 @@ package service_test
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -39,7 +40,7 @@ func TestUserAuthentificationService(t *testing.T) {
 	}
 
 	result = us.AuthenticateUser(testUser, altPassword)
-	if ok, message := checkError(result.ErrorStatus, libs.Unauthorized); !ok {
+	if ok, message := checkError(result.ErrorStatus, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
@@ -103,7 +104,7 @@ func TestRegisterUserWrongData(t *testing.T) {
 	}
 
 	result = us.RegisterUser(testUser, testPassword, &[]string{"role_admin"})
-	if ok, message := checkError(result.ErrorStatus, libs.Forbidden); !ok {
+	if ok, message := checkError(result.ErrorStatus, http.StatusForbidden); !ok {
 		t.Fatal(message)
 	}
 }
@@ -201,7 +202,7 @@ func TestChangePassword(t *testing.T) {
 	}
 
 	result = us.ChangePassword(testUser, "Yacp", altUser)
-	if ok, message := checkError(result.ErrorStatus, libs.Forbidden); !ok {
+	if ok, message := checkError(result.ErrorStatus, http.StatusForbidden); !ok {
 		t.Fatal(message)
 	}
 
@@ -310,7 +311,7 @@ func TestChangeRoles(t *testing.T) {
 	}
 
 	result = us.ChangeRoles(testUser, altUser, &altRoles, &[]string{})
-	if ok, message := checkError(result.ErrorStatus, libs.Forbidden); !ok {
+	if ok, message := checkError(result.ErrorStatus, http.StatusForbidden); !ok {
 		t.Fatal(message)
 	}
 	if ok, message := checkRolesForUserPW(testUser, testPassword, &testRoles, &us); !ok {
@@ -339,7 +340,7 @@ func TestChangeRoles(t *testing.T) {
 	}
 
 	result = us.ChangeRoles(testUser, testUser, &adminRoles, &[]string{})
-	if ok, message := checkError(result.ErrorStatus, libs.Forbidden); !ok {
+	if ok, message := checkError(result.ErrorStatus, http.StatusForbidden); !ok {
 		t.Fatal(message)
 	}
 
@@ -458,12 +459,12 @@ func TestDeleteUser(t *testing.T) {
 	}
 
 	result = us.DeleteUser(testUser, testUser)
-	if ok, message := checkError(result.ErrorStatus, libs.Forbidden); !ok {
+	if ok, message := checkError(result.ErrorStatus, http.StatusForbidden); !ok {
 		t.Fatal(message)
 	}
 
 	result = us.DeleteUser(testUser, altUser)
-	if ok, message := checkError(result.ErrorStatus, libs.Forbidden); !ok {
+	if ok, message := checkError(result.ErrorStatus, http.StatusForbidden); !ok {
 		t.Fatal(message)
 	}
 
@@ -577,7 +578,7 @@ func checkAuthenticationResult(expectedName string, expectedRoles *[]string, res
 }
 
 func checkWrongData(err *libs.RestError) (bool, string) {
-	return checkError(err, libs.BadRequest)
+	return checkError(err, http.StatusBadRequest)
 }
 
 func checkError(err *libs.RestError, expected int) (bool, string) {

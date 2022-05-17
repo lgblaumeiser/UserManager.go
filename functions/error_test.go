@@ -4,6 +4,7 @@ package functions
 
 import (
 	"errors"
+	"net/http"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,48 +16,48 @@ const testDetails = "Test Details"
 var wrapped = errors.New(testDetails)
 
 func TestErrorCreationMessage(t *testing.T) {
-	err := createError(BadRequest, testOverall)
-	checkError(t, err, BadRequest, testOverall)
+	err := createError(http.StatusBadRequest, testOverall)
+	checkError(t, err, http.StatusBadRequest, testOverall)
 }
 
 func TestErrorCreation(t *testing.T) {
-	err := createErrorWithWrapped(Unauthorized, testOverall, &wrapped)
-	checkErrorWithWrapped(t, err, Unauthorized, testOverall, &wrapped)
+	err := createErrorWithWrapped(http.StatusUnauthorized, testOverall, &wrapped)
+	checkErrorWithWrapped(t, err, http.StatusUnauthorized, testOverall, &wrapped)
 }
 
 func TestUnexpectedBehaviorError(t *testing.T) {
 	err := UnexpectedBehavior(&wrapped)
-	checkErrorWithWrapped(t, err, InternalServerError, unexpectedBehavior, &wrapped)
+	checkErrorWithWrapped(t, err, http.StatusInternalServerError, unexpectedBehavior, &wrapped)
 }
 
 func TestTokenExpired(t *testing.T) {
 	err := TokenExpired()
-	checkError(t, err, Unauthorized, tokenExpired)
+	checkError(t, err, http.StatusUnauthorized, tokenExpired)
 }
 
 func TestUnauthorizedUserError(t *testing.T) {
 	err := UnauthorizedUserError(&wrapped)
-	checkErrorWithWrapped(t, err, Unauthorized, authenicationFailed, &wrapped)
+	checkErrorWithWrapped(t, err, http.StatusUnauthorized, authenicationFailed, &wrapped)
 }
 
 func TestUnauthorizedUser(t *testing.T) {
 	err := UnauthorizedUser()
-	checkError(t, err, Unauthorized, authenicationFailed)
+	checkError(t, err, http.StatusUnauthorized, authenicationFailed)
 }
 
 func TestMissingAdminRights(t *testing.T) {
 	err := MissingAdminRights()
-	checkError(t, err, Forbidden, noSufficientRights)
+	checkError(t, err, http.StatusForbidden, noSufficientRights)
 }
 
 func TestIllegalArgument(t *testing.T) {
 	err := IllegalArgument(testDetails)
-	checkError(t, err, BadRequest, illegalData+testDetails)
+	checkError(t, err, http.StatusBadRequest, illegalData+testDetails)
 }
 
 func TestWithWrongCode(t *testing.T) {
 	err := createError(-1, testDetails)
-	checkError(t, err, InternalServerError, testDetails)
+	checkError(t, err, http.StatusInternalServerError, testDetails)
 }
 
 func checkError(t *testing.T, err *RestError, code int, message string) {

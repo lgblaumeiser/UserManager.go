@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
+// SPDX-License-Identifier: MIT
+// with parts generated:
 /*
  * User Manager API
  *
@@ -11,15 +14,11 @@ package rest
 
 import (
 	"encoding/json"
-	"errors"
-	"io/ioutil"
-	"mime/multipart"
+	"log"
 	"net/http"
-	"os"
-	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/lgblaumeiser/usermanager/util"
 )
 
 // A Route defines the parameters for an api endpoint
@@ -69,147 +68,16 @@ func EncodeJSONResponse(i interface{}, status int, w http.ResponseWriter) error 
 	return json.NewEncoder(w).Encode(i)
 }
 
-// ReadFormFileToTempFile reads file data from a request form and writes it to a temporary file
-func ReadFormFileToTempFile(r *http.Request, key string) (*os.File, error) {
-	_, fileHeader, err := r.FormFile(key)
+func handleError(err *util.RestError, w http.ResponseWriter, uri string) bool {
 	if err != nil {
-		return nil, err
-	}
-
-	return readFileHeaderToTempFile(fileHeader)
-}
-
-// ReadFormFilesToTempFiles reads files array data from a request form and writes it to a temporary files
-func ReadFormFilesToTempFiles(r *http.Request, key string) ([]*os.File, error) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		return nil, err
-	}
-
-	files := make([]*os.File, 0, len(r.MultipartForm.File[key]))
-
-	for _, fileHeader := range r.MultipartForm.File[key] {
-		file, err := readFileHeaderToTempFile(fileHeader)
-		if err != nil {
-			return nil, err
+		EncodeJSONResponse(err.Error(), err.ErrorCode, w)
+		errorMessage := err.Message
+		if err.WrappedError != nil {
+			werr := *err.WrappedError
+			errorMessage = errorMessage + " : " + werr.Error()
 		}
-
-		files = append(files, file)
+		log.Printf("An error occured for %s: %s:", uri, errorMessage)
+		return false
 	}
-
-	return files, nil
-}
-
-// readFileHeaderToTempFile reads multipart.FileHeader and writes it to a temporary file
-func readFileHeaderToTempFile(fileHeader *multipart.FileHeader) (*os.File, error) {
-	formFile, err := fileHeader.Open()
-	if err != nil {
-		return nil, err
-	}
-
-	defer formFile.Close()
-
-	fileBytes, err := ioutil.ReadAll(formFile)
-	if err != nil {
-		return nil, err
-	}
-
-	file, err := ioutil.TempFile("", fileHeader.Filename)
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	file.Write(fileBytes)
-
-	return file, nil
-}
-
-// parseInt64Parameter parses a string parameter to an int64.
-func parseInt64Parameter(param string, required bool) (int64, error) {
-	if param == "" {
-		if required {
-			return 0, errors.New(errMsgRequiredMissing)
-		}
-
-		return 0, nil
-	}
-
-	return strconv.ParseInt(param, 10, 64)
-}
-
-// parseInt32Parameter parses a string parameter to an int32.
-func parseInt32Parameter(param string, required bool) (int32, error) {
-	if param == "" {
-		if required {
-			return 0, errors.New(errMsgRequiredMissing)
-		}
-
-		return 0, nil
-	}
-
-	val, err := strconv.ParseInt(param, 10, 32)
-	if err != nil {
-		return -1, err
-	}
-
-	return int32(val), nil
-}
-
-// parseBoolParameter parses a string parameter to a bool
-func parseBoolParameter(param string) (bool, error) {
-	val, err := strconv.ParseBool(param)
-	if err != nil {
-		return false, err
-	}
-
-	return bool(val), nil
-}
-
-// parseInt64ArrayParameter parses a string parameter containing array of values to []int64.
-func parseInt64ArrayParameter(param, delim string, required bool) ([]int64, error) {
-	if param == "" {
-		if required {
-			return nil, errors.New(errMsgRequiredMissing)
-		}
-
-		return nil, nil
-	}
-
-	str := strings.Split(param, delim)
-	ints := make([]int64, len(str))
-
-	for i, s := range str {
-		if v, err := strconv.ParseInt(s, 10, 64); err != nil {
-			return nil, err
-		} else {
-			ints[i] = v
-		}
-	}
-
-	return ints, nil
-}
-
-// parseInt32ArrayParameter parses a string parameter containing array of values to []int32.
-func parseInt32ArrayParameter(param, delim string, required bool) ([]int32, error) {
-	if param == "" {
-		if required {
-			return nil, errors.New(errMsgRequiredMissing)
-		}
-
-		return nil, nil
-	}
-
-	str := strings.Split(param, delim)
-	ints := make([]int32, len(str))
-
-	for i, s := range str {
-		if v, err := strconv.ParseInt(s, 10, 32); err != nil {
-			return nil, err
-		} else {
-			ints[i] = int32(v)
-		}
-	}
-
-	return ints, nil
+	return true
 }

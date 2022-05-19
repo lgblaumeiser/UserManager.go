@@ -18,19 +18,19 @@ import (
 	_ "github.com/lgblaumeiser/usermanager/statik"
 	"github.com/rakyll/statik/fs"
 
-	rest "github.com/lgblaumeiser/usermanager/rest"
-	service "github.com/lgblaumeiser/usermanager/service"
-	store "github.com/lgblaumeiser/usermanager/store"
+	"github.com/lgblaumeiser/usermanager/rest"
+	"github.com/lgblaumeiser/usermanager/service"
+	"github.com/lgblaumeiser/usermanager/store"
 )
 
 func main() {
 	log.Printf("Server started")
 
-	InfrastructureApiService := rest.NewInfrastructureApiService()
-	InfrastructureApiController := rest.NewInfrastructureApiController(InfrastructureApiService)
+	store := store.CreateMemoryStore()
+	userService := service.NewUserService(store)
 
-	UsersApiService := rest.NewUsersApiService()
-	UsersApiController := rest.NewUsersApiController(UsersApiService)
+	InfrastructureApiController := rest.NewInfrastructureApiController(&userService)
+	UsersApiController := rest.NewUsersApiController(&userService)
 
 	router := rest.NewRouter(InfrastructureApiController, UsersApiController)
 
@@ -42,10 +42,6 @@ func main() {
 	staticServer := http.FileServer(statikFS)
 	sh := http.StripPrefix("/openapi/", staticServer)
 	router.PathPrefix("/openapi/").Handler(sh)
-
-	store := store.CreateMemoryStore()
-
-	userService := service.NewUserService(store)
 
 	log.Fatal(http.ListenAndServe(":19749", router))
 }

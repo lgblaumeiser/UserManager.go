@@ -119,4 +119,14 @@ func TestBackupAndRestoreWrongData(t *testing.T) {
 	if ok, message := checkError(err, http.StatusForbidden); !ok {
 		t.Error(message)
 	}
+
+	result, err = us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
+	err = us.Restore(testUser, data)
+	if ok, message := checkError(err, http.StatusForbidden); !ok {
+		t.Error(message)
+	}
 }

@@ -274,9 +274,11 @@ func (us *UserService) properAdminAccess(user *User, requestor string) (bool, *u
 }
 
 func (us *UserService) isAdmin(user *User) bool {
-	for _, role := range *user.Roles {
-		if role == AdminRole {
-			return true
+	if user != nil {
+		for _, role := range *user.Roles {
+			if role == AdminRole {
+				return true
+			}
 		}
 	}
 	return false

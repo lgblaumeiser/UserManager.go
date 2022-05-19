@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MIT
 package service_test
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
 func TestBackupAndRestore(t *testing.T) {
 	us := initializeTesteeUserService(t)
@@ -79,5 +82,41 @@ func TestBackupAndRestoreExistingUser(t *testing.T) {
 	_, err = us.AuthenticateUser(altUser, altPassword)
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
+	}
+}
+
+func TestBackupAndRestoreWrongData(t *testing.T) {
+	us := initializeTesteeUserService(t)
+
+	result, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
+	_, err = us.Backup("  any")
+	if ok, message := checkWrongData(err); !ok {
+		t.Error(message)
+	}
+
+	_, err = us.Backup(testUser)
+	if ok, message := checkError(err, http.StatusForbidden); !ok {
+		t.Error(message)
+	}
+
+	data, err := us.Backup(adminUser)
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatalf(message)
+	}
+
+	us = initializeTesteeUserService(t)
+
+	err = us.Restore("  any", data)
+	if ok, message := checkWrongData(err); !ok {
+		t.Error(message)
+	}
+
+	err = us.Restore(testUser, data)
+	if ok, message := checkError(err, http.StatusForbidden); !ok {
+		t.Error(message)
 	}
 }

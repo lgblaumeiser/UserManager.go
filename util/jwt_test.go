@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
 // SPDX-License-Identifier: MIT
-package functions
+package util
 
 import (
 	"testing"
 
-	uuid "github.com/google/uuid"
+	"github.com/google/uuid"
 )
 
 var testUsername = "happyuser"

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
 // SPDX-License-Identifier: MIT
-package functions
+package util
 
 import (
 	"errors"
@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt"
-	uuid "github.com/google/uuid"
+	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 )
 
 var emptyList = []string{}

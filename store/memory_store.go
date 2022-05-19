@@ -3,7 +3,7 @@
 package store
 
 import (
-	service "github.com/lgblaumeiser/usermanager/service"
+	"github.com/lgblaumeiser/usermanager/service"
 )
 
 type MemoryStore struct {

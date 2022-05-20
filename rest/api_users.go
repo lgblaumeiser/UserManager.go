@@ -149,10 +149,12 @@ func (c *UsersApiController) DeleteUser(w http.ResponseWriter, r *http.Request) 
 
 // InvalidateToken - Invalidate refresh token, in case token has been leaked and the usage has to be prevented, uses user, password authentication of the user or an admin token
 func (c *UsersApiController) InvalidateToken(w http.ResponseWriter, r *http.Request) {
+	// TODO Implement the functionality
 }
 
 // RefreshToken - With the use of the old access token or the refresh token aquire a new access token, refresh token will be restarted as well
 func (c *UsersApiController) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	// TODO Implement the functionality
 }
 
 // RegisterUser - Register a new user, needs no authentication

@@ -97,6 +97,7 @@ func (us *UserService) ChangePassword(username string, password string, requesto
 }
 
 func (us *UserService) ChangeRoles(username string, requestor string, newRoles *[]string, obsRoles *[]string) (string, *util.RestError) {
+	// TODO if username is empty, use requestor
 	if !util.IsCleanAlphanumericString(username) {
 		return "", util.IllegalArgument("username")
 	}
@@ -169,6 +170,7 @@ func (us *UserService) DeleteUser(username string, requestor string) *util.RestE
 }
 
 func (us *UserService) AuthenticateUser(username string, password string) (string, *util.RestError) {
+	// TODO Return two tokens, a refresh token as well, duration of token is 30 minutes and 2 weeks
 	if !util.IsCleanAlphanumericString(username) {
 		return "", util.IllegalArgument("username")
 	}
@@ -218,6 +220,7 @@ func (us *UserService) Backup(requestor string) (*[]byte, *util.RestError) {
 }
 
 func (us *UserService) Restore(requestor string, userData *[]byte) *util.RestError {
+	// TODO Replace the data in the database with the restored data!
 	if !util.IsCleanAlphanumericString(requestor) {
 		return util.IllegalArgument("requestor")
 	}

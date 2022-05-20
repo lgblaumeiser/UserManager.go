@@ -10,8 +10,13 @@ import (
 	"github.com/lgblaumeiser/usermanager/service"
 )
 
-type tokenResult struct {
-	JwtToken string `json:"jwt_token,omitempty"`
+type TokenResult struct {
+
+	// A valid token
+	AccessToken string `json:"access_token,omitempty"`
+
+	// A valid token
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type userId struct {
@@ -67,6 +72,18 @@ func (c *UsersApiController) Routes() Routes {
 			c.DeleteUser,
 		},
 		{
+			"InvalidateToken",
+			strings.ToUpper("Put"),
+			"/users/token",
+			c.InvalidateToken,
+		},
+		{
+			"RefreshToken",
+			strings.ToUpper("Get"),
+			"/users/token",
+			c.RefreshToken,
+		},
+		{
 			"RegisterUser",
 			strings.ToUpper("Post"),
 			"/users",
@@ -85,7 +102,7 @@ func (c *UsersApiController) AuthenticateUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	EncodeJSONResponse(tokenResult{result}, http.StatusOK, w)
+	EncodeJSONResponse(TokenResult{result, ""}, http.StatusOK, w)
 }
 
 // ChangePassword - Change the password of the user, authentication provided either by token of user or of an admin
@@ -107,7 +124,7 @@ func (c *UsersApiController) ChangeRoles(w http.ResponseWriter, r *http.Request)
 	userDataParam := extractUserDataFromRequest(r)
 	requestor := r.Header.Get(UsernameHeader)
 
-	result, err := c.service.ChangeRoles(userDataParam.Username, requestor, &userDataParam.Newroles, &userDataParam.Obsroles)
+	result, err := c.service.ChangeRoles(userDataParam.Username, requestor, &userDataParam.Addroles, &userDataParam.Removeroles)
 
 	if !handleError(err, w, r.RequestURI) {
 		return
@@ -130,11 +147,19 @@ func (c *UsersApiController) DeleteUser(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// InvalidateToken - Invalidate refresh token, in case token has been leaked and the usage has to be prevented, uses user, password authentication of the user or an admin token
+func (c *UsersApiController) InvalidateToken(w http.ResponseWriter, r *http.Request) {
+}
+
+// RefreshToken - With the use of the old access token or the refresh token aquire a new access token, refresh token will be restarted as well
+func (c *UsersApiController) RefreshToken(w http.ResponseWriter, r *http.Request) {
+}
+
 // RegisterUser - Register a new user, needs no authentication
 func (c *UsersApiController) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	userDataParam := extractUserDataFromRequest(r)
 
-	result, err := c.service.RegisterUser(userDataParam.Username, userDataParam.Password, &userDataParam.Newroles)
+	result, err := c.service.RegisterUser(userDataParam.Username, userDataParam.Password, &userDataParam.Addroles)
 
 	if !handleError(err, w, r.RequestURI) {
 		return

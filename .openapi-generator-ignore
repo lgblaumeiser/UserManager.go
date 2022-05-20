@@ -4,9 +4,17 @@
 go.mod
 rest/impl.go
 rest/error.go
-rest/model_inline_response_200.go
-rest/model_user_identity.go
 rest/helpers.go
+rest/api_infrastructure_service.go
+rest/api_infrastructure.go
+rest/api_users_service.go
+rest/model_auth_data.go
+rest/model_change_role_data.go
+rest/model_new_user_data.go
+rest/model_simple_user_data.go
+rest/model_token_result.go
+rest/model_user_id.go
+rest/routers.go
 
 # Use this file to prevent files from being overwritten by the generator.
 # The patterns follow closely to .gitignore or .dockerignore.

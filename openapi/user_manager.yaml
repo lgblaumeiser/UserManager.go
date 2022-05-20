@@ -19,8 +19,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserData'
-        description: Field username is required, rest is ignored
+              $ref: '#/components/schemas/SimpleUserData'
+        description: Field username is required
         required: true
       responses:
         "204":
@@ -33,9 +33,10 @@ paths:
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
       security:
       - BearerAuth:
         - admin
@@ -48,24 +49,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserData'
-        description: Field username is optional, newroles and obsroles are optional,
-          but should contain at least one element, password is ignored
+              $ref: '#/components/schemas/ChangeRoleData'
+        description: Field username is optional, if not given, token id is used, newroles
+          and obsroles are optional, but should in total contain at least one element
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserIdentity'
+                $ref: '#/components/schemas/UserId'
           description: Roles successfully changed
         "400":
           content:
             text/plain; charset=utf-8:
               schema:
+                example: Request body did not contain valid data, request failed
                 type: string
-          description: Bad data given to the request, returns the error message of
-            the server
+          description: Bad data given to the request, returns an adequate error message
         "401":
           description: User not authorized
         "403":
@@ -74,9 +75,10 @@ paths:
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
       security:
       - BearerAuth: []
       summary: Change roles of user, admin roles can only be changed by an admin
@@ -88,32 +90,33 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserData'
-        description: Fields username and password are required, newroles is optional,
-          obsroles is ignored
+              $ref: '#/components/schemas/NewUserData'
+        description: Fields username and password are required, roles is optional
         required: true
       responses:
         "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserIdentity'
+                $ref: '#/components/schemas/UserId'
           description: User successfully created
         "400":
           content:
             text/plain; charset=utf-8:
               schema:
+                example: Request body did not contain valid data, request failed
                 type: string
-          description: Bad data given to the request, returns the error message of
-            the server
+          description: Bad data given to the request, returns an adequate error message
         "500":
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
-      summary: Register a new user, needs no authentication
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
+      summary: Register a new user, needs no authentication, user will get usermanager_user
+        role
       tags:
       - users
     put:
@@ -122,24 +125,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserData'
+              $ref: '#/components/schemas/AuthData'
         description: Fields username and password are required, password contains
-          new password, rest is ignored
+          new password
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserIdentity'
+                $ref: '#/components/schemas/UserId'
           description: Password successfully changed
         "400":
           content:
             text/plain; charset=utf-8:
               schema:
+                example: Request body did not contain valid data, request failed
                 type: string
-          description: Bad data given to the request, returns the error message of
-            the server
+          description: Bad data given to the request, returns an adequate error message
         "401":
           description: User not authorized
         "403":
@@ -148,9 +151,10 @@ paths:
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
       security:
       - BearerAuth: []
       summary: Change the password of the user, authentication provided either by
@@ -164,7 +168,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserData'
+              $ref: '#/components/schemas/AuthData'
         description: Field username and password are required, rest is ignored
         required: true
       responses:
@@ -172,25 +176,94 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/inline_response_200'
-          description: User authenticated, required jwt token returned
+                $ref: '#/components/schemas/TokenResult'
+          description: User authenticated, required access token and refresh token
+            returned
         "400":
           content:
             text/plain; charset=utf-8:
               schema:
+                example: Request body did not contain valid data, request failed
                 type: string
-          description: Bad data given to the request, returns the error message of
-            the server
+          description: Bad data given to the request, returns an adequate error message
         "401":
           description: User not authorized
         "500":
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
-      summary: Authenticate a registered user by password, returns a jwt token
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
+      summary: Authenticate a registered user by password, returns an access token
+        valid for 30 minutes and a refresh token valid for 2 weeks
+      tags:
+      - users
+  /users/token:
+    get:
+      operationId: refreshToken
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResult'
+          description: Refreshed access and refresh token
+        "401":
+          description: User not authorized
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                example: An io error occured, request failed
+                type: string
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
+      security:
+      - BearerAuth: []
+      summary: With the use of the old access token or the refresh token aquire a
+        new access token, refresh token will be restarted as well
+      tags:
+      - users
+    put:
+      operationId: invalidateToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthData'
+        description: Field username is required, either password is given or the request
+          has an access token from an admin
+        required: true
+      responses:
+        "204":
+          description: The refresh token has been invalidated
+        "400":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                example: Request body did not contain valid data, request failed
+                type: string
+          description: Bad data given to the request, returns an adequate error message
+        "401":
+          description: User not authorized
+        "403":
+          description: Admin access needed for this operation
+        "500":
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                example: An io error occured, request failed
+                type: string
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
+      security:
+      - BearerAuth:
+        - admin
+      summary: Invalidate refresh token, in case token has been leaked and the usage
+        has to be prevented, uses user, password authentication of the user or an
+        admin token
       tags:
       - users
   /backup:
@@ -203,7 +276,7 @@ paths:
               schema:
                 format: binary
                 type: string
-          description: A backup of the database data as zip file
+          description: A backup of the database data as zip byte stream
         "401":
           description: User not authorized
         "403":
@@ -212,9 +285,10 @@ paths:
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
       security:
       - BearerAuth:
         - admin
@@ -238,9 +312,9 @@ paths:
           content:
             text/plain; charset=utf-8:
               schema:
+                example: Request body did not contain valid data, request failed
                 type: string
-          description: Bad data given to the request, returns the error message of
-            the server
+          description: Bad data given to the request, returns an adequate error message
         "401":
           description: User not authorized
         "403":
@@ -249,13 +323,14 @@ paths:
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
       security:
       - BearerAuth:
         - admin
-      summary: Restore a backup and replace existing database
+      summary: Restore a backup and replace existing database, old date will be deleted
       tags:
       - infrastructure
   /licenses:
@@ -272,9 +347,10 @@ paths:
           content:
             text/plain; charset=utf-8:
               schema:
+                example: An io error occured, request failed
                 type: string
-          description: The request resulted in an unexpected exception, returns the
-            error message of the server
+          description: The request resulted in an unexpected exception, returns an
+            adequate error message
       summary: Returns the attribution information on the used Open Source Software
       tags:
       - infrastructure
@@ -282,77 +358,138 @@ components:
   responses:
     SuccessfullyDeleted:
       description: Resource deleted successfully
-    NoContent:
-      description: The requested collection is empty
     Unauthorized:
       description: User not authorized
     BadRequest:
       content:
         text/plain; charset=utf-8:
           schema:
+            example: Request body did not contain valid data, request failed
             type: string
-      description: Bad data given to the request, returns the error message of the
-        server
+      description: Bad data given to the request, returns an adequate error message
     AdminAccess:
       description: Admin access needed for this operation
     InternalError:
       content:
         text/plain; charset=utf-8:
           schema:
+            example: An io error occured, request failed
             type: string
-      description: The request resulted in an unexpected exception, returns the error
-        message of the server
+      description: The request resulted in an unexpected exception, returns an adequate
+        error message
   schemas:
-    UserData:
+    AuthData:
       example:
-        obsroles:
-        - tool_user;tool_admin
-        - tool_user;tool_admin
         password: $0MeP@sswOrD
-        newroles:
-        - tool_user;tool_admin
-        - tool_user;tool_admin
         username: my_username
       properties:
         username:
+          description: An unique identifier for the user
           example: my_username
           type: string
         password:
+          description: The password for the user
           example: $0MeP@sswOrD
           format: password
           type: string
-        newroles:
-          items:
-            example: tool_user;tool_admin
-            type: string
-          type: array
-        obsroles:
-          items:
-            example: tool_user;tool_admin
-            type: string
-          type: array
       type: object
-    RoleList:
-      items:
-        example: tool_user;tool_admin
-        type: string
-      type: array
-    UserIdentity:
+    NewUserData:
       example:
-        userid: my_username
+        password: $0MeP@sswOrD
+        addroles:
+        - '["tool_user","tool_admin"]'
+        - '["tool_user","tool_admin"]'
+        username: my_username
       properties:
-        userid:
+        username:
+          description: An unique identifier for the user
+          example: my_username
+          type: string
+        password:
+          description: The password for the user
+          example: $0MeP@sswOrD
+          format: password
+          type: string
+        addroles:
+          items:
+            example: '["tool_user","tool_admin"]'
+            type: string
+          type: array
+    SimpleUserData:
+      example:
+        username: my_username
+      properties:
+        username:
+          description: An unique identifier for the user
           example: my_username
           type: string
       type: object
-    inline_response_200:
+    ChangeRoleData:
       example:
-        jwt_token: jwt_token
+        removeroles:
+        - '["tool_user","tool_admin"]'
+        - '["tool_user","tool_admin"]'
+        addroles:
+        - '["tool_user","tool_admin"]'
+        - '["tool_user","tool_admin"]'
+        username: my_username
       properties:
-        jwt_token:
-          description: The token for authentification and authorisation
+        username:
+          description: An unique identifier for the user
+          example: my_username
+          type: string
+        addroles:
+          items:
+            example: '["tool_user","tool_admin"]'
+            type: string
+          type: array
+        removeroles:
+          items:
+            example: '["tool_user","tool_admin"]'
+            type: string
+          type: array
+      type: object
+    UserId:
+      example:
+        username: my_username
+      properties:
+        username:
+          description: An unique identifier for the user
+          example: my_username
           type: string
       type: object
+    TokenResult:
+      example:
+        access_token: access_token
+        refresh_token: refresh_token
+      properties:
+        access_token:
+          description: A valid token
+          format: byte
+          type: string
+        refresh_token:
+          description: A valid token
+          format: byte
+          type: string
+      type: object
+    Username:
+      description: An unique identifier for the user
+      example: my_username
+      type: string
+    Password:
+      description: The password for the user
+      example: $0MeP@sswOrD
+      format: password
+      type: string
+    Token:
+      description: A valid token
+      format: byte
+      type: string
+    RoleList:
+      items:
+        example: '["tool_user","tool_admin"]'
+        type: string
+      type: array
   securitySchemes:
     BearerAuth:
       bearerFormat: JWT

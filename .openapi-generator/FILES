@@ -5,11 +5,8 @@ main.go
 rest/api.go
 rest/api_infrastructure.go
 rest/api_users.go
-rest/error.go
-rest/helpers.go
-rest/impl.go
+rest/api_users_service.go
 rest/logger.go
-rest/model_inline_response_200.go
-rest/model_user_data.go
-rest/model_user_identity.go
+rest/model_change_role_data.go
+rest/model_new_user_data.go
 rest/routers.go

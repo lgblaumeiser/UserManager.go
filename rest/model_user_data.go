@@ -14,7 +14,7 @@ type UserData struct {
 
 	Password string `json:"password,omitempty"`
 
-	Newroles []string `json:"newroles,omitempty"`
+	Addroles []string `json:"addroles,omitempty"`
 
-	Obsroles []string `json:"obsroles,omitempty"`
+	Removeroles []string `json:"removeroles,omitempty"`
 }

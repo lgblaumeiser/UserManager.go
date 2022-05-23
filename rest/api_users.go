@@ -147,14 +147,31 @@ func (c *UsersApiController) DeleteUser(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// InvalidateToken - Invalidate refresh token, in case token has been leaked and the usage has to be prevented, uses user, password authentication of the user or an admin token
+// InvalidateToken - Invalidate refresh token, in case token has been leaked and the usage has to be prevented, uses no authentication, simply the username is needed
 func (c *UsersApiController) InvalidateToken(w http.ResponseWriter, r *http.Request) {
-	// TODO Implement the functionality
+	userDataParam := extractUserDataFromRequest(r)
+
+	err := c.service.InvalidateToken(userDataParam.Username)
+
+	if !handleError(err, w, r.RequestURI) {
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
-// RefreshToken - With the use of the old access token or the refresh token aquire a new access token, refresh token will be restarted as well
+// RefreshToken - With the use of the refresh token aquire a new access token, refresh token will be restarted as well
 func (c *UsersApiController) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	// TODO Implement the functionality
+	requestor := r.Header.Get(UsernameHeader)
+	tokenId := r.Header.Get(TokenIdHeader)
+
+	access, refresh, err := c.service.RefreshToken(requestor, tokenId)
+
+	if !handleError(err, w, r.RequestURI) {
+		return
+	}
+
+	EncodeJSONResponse(TokenResult{access, refresh}, http.StatusOK, w)
 }
 
 // RegisterUser - Register a new user, needs no authentication

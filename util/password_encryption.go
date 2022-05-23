@@ -6,7 +6,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const cryptCost = 16
+const cryptCost = 12
 
 func EncryptPassword(password string) (string, *RestError) {
 	if !IsCleanString(password) {

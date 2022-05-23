@@ -14,12 +14,12 @@ var testRoles = []string{"some_admin", "some_role", "another_role"}
 func TestTokenCleanPath(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	accessToken, refreshToken, _, err := CreateToken(testUsername, &testRoles)
+	accessToken, refreshToken, refreshId, err := CreateToken(testUsername, &testRoles)
 	if err != nil {
 		t.Errorf("Create Token failed: %s", err.Error())
 	}
 
-	puser, proles, err := ParseToken(accessToken)
+	puser, proles, _, err := ParseToken(accessToken)
 	if err != nil {
 		t.Errorf("Parse access token failed: %s", err.Error())
 	}
@@ -30,7 +30,7 @@ func TestTokenCleanPath(t *testing.T) {
 		t.Errorf("Role size mismatch, expected %s, found %s", encodeRoles(&testRoles), encodeRoles(proles))
 	}
 
-	puser, proles, err = ParseToken(refreshToken)
+	puser, proles, tokenId, err := ParseToken(refreshToken)
 	if err != nil {
 		t.Errorf("Parse refresh token failed: %s", err.Error())
 	}
@@ -38,7 +38,10 @@ func TestTokenCleanPath(t *testing.T) {
 		t.Errorf("Expexted username: %s ; found username: %s", testUsername, puser)
 	}
 	if proles != nil {
-		t.Errorf("Expected roles to be empty for refresh token")
+		t.Error("Expected roles to be empty for refresh token")
+	}
+	if refreshId != tokenId {
+		t.Errorf("Token Id mismatch: expected: %s, found: %s", refreshId, tokenId)
 	}
 }
 
@@ -77,7 +80,7 @@ func TestWithWrongKey(t *testing.T) {
 	}
 
 	InitializeJwtService([]byte("Another Key"))
-	_, _, err = ParseToken(token)
+	_, _, _, err = ParseToken(token)
 	if err == nil {
 		t.Errorf("Token validation should have failed")
 	}

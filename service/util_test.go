@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
+// SPDX-License-Identifier: MIT
 package service_test
 
 import (
@@ -24,6 +26,8 @@ var adminRoles = []string{"user_admin"}
 var thirdUser = "thirdUser"
 var thirdPassword = "my password"
 
+var uninteresting = "Uninteresting String"
+
 func checkRolesForUserPW(expected string, password string, expectedRoles *[]string, us *service.UserService) (bool, string) {
 	access, refresh, err := us.AuthenticateUser(expected, password)
 	return checkAuthenticationResult(expected, expectedRoles, access, refresh, err)
@@ -44,7 +48,7 @@ func checkAuthenticationResult(expectedName string, expectedRoles *[]string, acc
 		return false, unexpectedError(rerr)
 	}
 
-	username, roles, err := util.ParseToken(access)
+	username, roles, _, err := util.ParseToken(access)
 	if err != nil {
 		return false, unexpectedError(rerr)
 	}
@@ -59,7 +63,7 @@ func checkAuthenticationResult(expectedName string, expectedRoles *[]string, acc
 		return false, roleMismatch(expectedRoles, roles)
 	}
 
-	username, roles, err = util.ParseToken(refresh)
+	username, roles, _, err = util.ParseToken(refresh)
 	if err != nil {
 		return false, unexpectedError(rerr)
 	}

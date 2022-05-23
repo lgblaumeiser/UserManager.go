@@ -23,27 +23,27 @@ func InitializeJwtService(key []byte) {
 	jwtKey = key
 }
 
-func ParseToken(tokenString string) (string, *[]string, *RestError) {
+func ParseToken(tokenString string) (string, *[]string, string, *RestError) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 	if err != nil {
-		return "", &emptyList, UnexpectedBehavior(&err)
+		return "", &emptyList, "", UnexpectedBehavior(&err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", &emptyList, UnexpectedBehavior(&err)
+		return "", &emptyList, "", UnexpectedBehavior(&err)
 	}
 
 	if !token.Valid {
-		return "", &emptyList, TokenExpired()
+		return "", &emptyList, "", TokenExpired()
 	}
 
 	username := claims["username"].(string)
 	if len(strings.TrimSpace(username)) == 0 {
 		wrapped := errors.New("Username not defined in token")
-		return "", &emptyList, UnexpectedBehavior(&wrapped)
+		return "", &emptyList, "", UnexpectedBehavior(&wrapped)
 	}
 	roles := ""
 	rawRoles := claims["roles"]
@@ -51,10 +51,12 @@ func ParseToken(tokenString string) (string, *[]string, *RestError) {
 		roles = rawRoles.(string)
 		if !isRoleString(roles) {
 			wrapped := errors.New("Roles not defined in token")
-			return "", &emptyList, UnexpectedBehavior(&wrapped)
+			return "", &emptyList, "", UnexpectedBehavior(&wrapped)
 		}
 	}
-	return username, decodeRoles(roles), nil
+	tokenId := claims["id"].(string)
+
+	return username, decodeRoles(roles), tokenId, nil
 }
 
 // Returns accessToken, refreshToken, refreshTokenId, potential error
@@ -90,7 +92,7 @@ func createTokenWithClaims(duration time.Duration, claims jwt.MapClaims) (string
 		return "", "", UnexpectedBehavior(&err)
 	}
 
-	claims["id"] = tokenID
+	claims["id"] = tokenID.String()
 	claims["exp"] = expirationDate.Unix()
 	claims["iat"] = time.Now().Unix()
 

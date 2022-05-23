@@ -5,6 +5,7 @@ package service
 import (
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/lgblaumeiser/usermanager/util"
 )
 
@@ -203,6 +204,53 @@ func (us *UserService) AuthenticateUser(username string, password string) (strin
 	return accessToken, refreshToken, err
 }
 
+func (us *UserService) RefreshToken(username string, tokenId string) (string, string, *util.RestError) {
+	if !util.IsCleanAlphanumericString(username) {
+		return "", "", util.IllegalArgument("username")
+	}
+
+	if _, err := uuid.Parse(tokenId); err != nil {
+		return "", "", util.IllegalArgument("tokenId")
+	}
+
+	userObj := us.store.GetUser(username)
+	if userObj == nil {
+		return "", "", util.UnauthorizedUser()
+	}
+
+	if tokenId != userObj.RefreshToken {
+		return "", "", util.UnauthorizedUser()
+	}
+
+	accessToken, refreshToken, refreshId, err := util.CreateToken(userObj.Username, userObj.Roles)
+	userObj.RefreshToken = refreshId
+	_, ioerr := us.store.StoreUser(userObj)
+	if ioerr != nil {
+		return "", "", util.UnexpectedBehavior(&ioerr)
+	}
+	return accessToken, refreshToken, err
+}
+
+func (us *UserService) InvalidateToken(username string) *util.RestError {
+	if !util.IsCleanAlphanumericString(username) {
+		return util.IllegalArgument("username")
+	}
+
+	userObj := us.store.GetUser(username)
+	if userObj == nil {
+		return nil
+	}
+
+	userObj.RefreshToken = ""
+
+	_, err := us.store.StoreUser(userObj)
+	if err != nil {
+		return util.UnexpectedBehavior(&err)
+	}
+
+	return nil
+}
+
 func (us *UserService) Backup(requestor string) (*[]byte, *util.RestError) {
 	if !util.IsCleanAlphanumericString(requestor) {
 		return nil, util.IllegalArgument("requestor")
@@ -231,7 +279,6 @@ func (us *UserService) Backup(requestor string) (*[]byte, *util.RestError) {
 }
 
 func (us *UserService) Restore(requestor string, userData *[]byte) *util.RestError {
-	// TODO Replace the data in the database with the restored data!
 	if !util.IsCleanAlphanumericString(requestor) {
 		return util.IllegalArgument("requestor")
 	}

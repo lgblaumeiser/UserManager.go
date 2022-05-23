@@ -537,6 +537,145 @@ func TestDeleteUserWrongData(t *testing.T) {
 	}
 }
 
+func TestRefreshToken(t *testing.T) {
+	us := initializeTesteeUserService(t)
+
+	result, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
+	access, refresh, err := us.AuthenticateUser(testUser, testPassword)
+	if ok, message := checkAuthenticationResult(testUser, &testRoles, access, refresh, err); !ok {
+		t.Fatal(message)
+	}
+
+	userObj := userStore.GetUser(testUser)
+	id, uerr := uuid.Parse(userObj.RefreshToken)
+	if uerr != nil {
+		t.Fatal("Refresh token id not ok")
+	}
+
+	access, refresh, err = us.RefreshToken(testUser, id.String())
+	if ok, message := checkAuthenticationResult(testUser, &testRoles, access, refresh, err); !ok {
+		t.Fatal(message)
+	}
+
+	userObj = userStore.GetUser(testUser)
+	id2, uerr := uuid.Parse(userObj.RefreshToken)
+	if err != nil {
+		t.Fatal("Refresh token id not ok")
+	}
+	if id == id2 {
+		t.Fatal("Stored token id unchanged after refresh")
+	}
+
+	access, refresh, err = us.RefreshToken(testUser, id2.String())
+	if ok, message := checkAuthenticationResult(testUser, &testRoles, access, refresh, err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.RefreshToken(testUser, id2.String())
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
+		t.Fatal(message)
+	}
+}
+
+func TestRefreshWrongData(t *testing.T) {
+	us := initializeTesteeUserService(t)
+
+	testUuid, uerr := uuid.NewRandom()
+	if uerr != nil {
+		t.Fatal("UUid generation failed")
+	}
+	uuidString := testUuid.String()
+
+	_, _, err := us.RefreshToken("", uuidString)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.RefreshToken("str@ngeUser", uuidString)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.RefreshToken("\tsomething", uuidString)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.RefreshToken("some thing", uuidString)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.RefreshToken(testUser, uninteresting)
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+}
+
+func TestInvalidate(t *testing.T) {
+	us := initializeTesteeUserService(t)
+
+	result, err := us.RegisterUser(testUser, testPassword, &testRoles)
+	if ok, message := checkUsernameResult(testUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
+	result, err = us.RegisterUser(altUser, altPassword, &altRoles)
+	if ok, message := checkUsernameResult(altUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
+	access, refresh, err := us.AuthenticateUser(testUser, testPassword)
+	if ok, message := checkAuthenticationResult(testUser, &testRoles, access, refresh, err); !ok {
+		t.Fatal(message)
+	}
+
+	userObj := userStore.GetUser(testUser)
+	if _, err := uuid.Parse(userObj.RefreshToken); err != nil {
+		t.Fatal("Refresh token id not ok")
+	}
+
+	err = us.InvalidateToken(testUser)
+	if ok, message := checkUnexpectedError(err); !ok {
+		t.Fatal(message)
+	}
+
+	userObj = userStore.GetUser(testUser)
+	if userObj.RefreshToken != "" {
+		t.Fatal("Refresh token id exists after invalidation")
+	}
+}
+
+func TestInvalidateWrongData(t *testing.T) {
+	us := initializeTesteeUserService(t)
+
+	err := us.InvalidateToken("")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	err = us.InvalidateToken("str@ngeUser")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	err = us.InvalidateToken("\tsomething")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+
+	err = us.InvalidateToken("some thing")
+	if ok, message := checkWrongData(err); !ok {
+		t.Fatal(message)
+	}
+}
+
+var userStore service.UserStore
+
 func initializeTesteeUserService(t *testing.T) service.UserService {
 	key, err := uuid.NewRandom()
 	if err != nil {
@@ -544,8 +683,8 @@ func initializeTesteeUserService(t *testing.T) service.UserService {
 	}
 	util.InitializeJwtService([]byte(key.String()))
 
-	store := store.CreateMemoryStore()
-	usrv, serr := service.NewUserService(store)
+	userStore = store.CreateMemoryStore()
+	usrv, serr := service.NewUserService(userStore)
 	if ok, message := checkUnexpectedError(serr); !ok {
 		t.Fatal(message)
 	}

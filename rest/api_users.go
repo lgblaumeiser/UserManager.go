@@ -92,7 +92,7 @@ func (c *UsersApiController) Routes() Routes {
 	}
 }
 
-// AuthenticateUser - Authenticate a registered user by password, returns a jwt token
+// AuthenticateUser - Authenticate a registered user by password, returns an access token valid for 30 minutes and a refresh token valid for 2 weeks
 func (c *UsersApiController) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
 	userDataParam := extractUserDataFromRequest(r)
 
@@ -133,7 +133,7 @@ func (c *UsersApiController) ChangeRoles(w http.ResponseWriter, r *http.Request)
 	EncodeJSONResponse(userId{result}, http.StatusOK, w)
 }
 
-// DeleteUser - Delete a user and all its data from the database
+// DeleteUser - Delete a user from the database
 func (c *UsersApiController) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	userDataParam := extractUserDataFromRequest(r)
 	requestor := r.Header.Get(UsernameHeader)
@@ -174,7 +174,7 @@ func (c *UsersApiController) RefreshToken(w http.ResponseWriter, r *http.Request
 	EncodeJSONResponse(TokenResult{access, refresh}, http.StatusOK, w)
 }
 
-// RegisterUser - Register a new user, needs no authentication
+// RegisterUser - Register a new user, needs no authentication, user will get usermanager_user role
 func (c *UsersApiController) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	userDataParam := extractUserDataFromRequest(r)
 

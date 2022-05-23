@@ -96,13 +96,13 @@ func (c *UsersApiController) Routes() Routes {
 func (c *UsersApiController) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
 	userDataParam := extractUserDataFromRequest(r)
 
-	result, err := c.service.AuthenticateUser(userDataParam.Username, userDataParam.Password)
+	access, refresh, err := c.service.AuthenticateUser(userDataParam.Username, userDataParam.Password)
 
 	if !handleError(err, w, r.RequestURI) {
 		return
 	}
 
-	EncodeJSONResponse(TokenResult{result, ""}, http.StatusOK, w)
+	EncodeJSONResponse(TokenResult{access, refresh}, http.StatusOK, w)
 }
 
 // ChangePassword - Change the password of the user, authentication provided either by token of user or of an admin

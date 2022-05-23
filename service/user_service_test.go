@@ -3,9 +3,7 @@
 package service_test
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,18 +11,6 @@ import (
 	"github.com/lgblaumeiser/usermanager/store"
 	"github.com/lgblaumeiser/usermanager/util"
 )
-
-var testUser = "testUser"
-var testPassword = "super password"
-var testRoles = []string{"role_1", "role_2", "role_3"}
-
-var altUser = "altUser"
-var altPassword = "b@d pw"
-var altRoles = []string{"alt_role_1", "alt_role_2"}
-
-var adminUser = "admin"
-var adminPassword = "admin"
-var adminRoles = []string{"user_admin"}
 
 func TestUserAuthentificationService(t *testing.T) {
 	us := initializeTesteeUserService(t)
@@ -34,18 +20,23 @@ func TestUserAuthentificationService(t *testing.T) {
 		t.Fatal(message)
 	}
 
-	result, err = us.AuthenticateUser(result, testPassword)
-	if ok, message := checkAuthenticationResult(testUser, &testRoles, result, err); !ok {
+	access, refresh, err := us.AuthenticateUser(result, testPassword)
+	if ok, message := checkAuthenticationResult(testUser, &testRoles, access, refresh, err); !ok {
 		t.Fatal(message)
 	}
 
-	result, err = us.AuthenticateUser(testUser, altPassword)
+	access, refresh, err = us.AuthenticateUser(adminUser, adminPassword)
+	if ok, message := checkAuthenticationResult(adminUser, &[]string{service.AdminRole}, access, refresh, err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.AuthenticateUser(testUser, altPassword)
 	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
-	result, err = us.AuthenticateUser(altUser, testPassword)
-	if ok, message := checkWrongData(err); !ok {
+	_, _, err = us.AuthenticateUser(altUser, testPassword)
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 }
@@ -112,32 +103,32 @@ func TestRegisterUserWrongData(t *testing.T) {
 func TestAuthenticationWrongDate(t *testing.T) {
 	us := initializeTesteeUserService(t)
 
-	_, err := us.AuthenticateUser("", testPassword)
+	_, _, err := us.AuthenticateUser("", testPassword)
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser("str@ngeUser", testPassword)
+	_, _, err = us.AuthenticateUser("str@ngeUser", testPassword)
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser("\tsomething", testPassword)
+	_, _, err = us.AuthenticateUser("\tsomething", testPassword)
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser("some thing", testPassword)
+	_, _, err = us.AuthenticateUser("some thing", testPassword)
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(testUser, "")
+	_, _, err = us.AuthenticateUser(testUser, "")
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(testUser, "\tstrange")
+	_, _, err = us.AuthenticateUser(testUser, "\tstrange")
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
@@ -162,7 +153,7 @@ func TestRegisterMultipleUsers(t *testing.T) {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(username, testPassword)
+	_, _, err = us.AuthenticateUser(username, testPassword)
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
 	}
@@ -186,7 +177,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(testUser, "ChangedPW")
+	_, _, err = us.AuthenticateUser(testUser, "ChangedPW")
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
 	}
@@ -196,7 +187,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(testUser, "AnotherChanged")
+	_, _, err = us.AuthenticateUser(testUser, "AnotherChanged")
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
 	}
@@ -206,7 +197,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(testUser, "AnotherChanged")
+	_, _, err = us.AuthenticateUser(testUser, "AnotherChanged")
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
 	}
@@ -216,7 +207,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(testUser, "AnotherChanged")
+	_, _, err = us.AuthenticateUser(testUser, "AnotherChanged")
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
 	}
@@ -546,87 +537,6 @@ func TestDeleteUserWrongData(t *testing.T) {
 	}
 }
 
-func checkRolesForUserPW(expected string, password string, expectedRoles *[]string, us *service.UserService) (bool, string) {
-	result, err := us.AuthenticateUser(expected, password)
-	return checkAuthenticationResult(expected, expectedRoles, result, err)
-}
-
-func checkUsernameResult(expected string, result string, rerr *util.RestError) (bool, string) {
-	if rerr != nil {
-		return false, unexpectedError(rerr)
-	}
-	if result != expected {
-		return false, stringMismatch(expected, result)
-	}
-	return true, ""
-}
-
-func checkAuthenticationResult(expectedName string, expectedRoles *[]string, result string, rerr *util.RestError) (bool, string) {
-	if rerr != nil {
-		return false, unexpectedError(rerr)
-	}
-
-	username, roles, err := util.ParseToken(result)
-	if err != nil {
-		return false, unexpectedError(rerr)
-	}
-	if username != expectedName {
-		return false, stringMismatch(expectedName, username)
-	}
-	if !util.Contains(expectedRoles, service.AdminRole) {
-		extendExpected := append(*expectedRoles, service.UserRole)
-		expectedRoles = &extendExpected
-	}
-	return util.TwoStringListsHaveSameContent(expectedRoles, roles), roleMismatch(expectedRoles, roles)
-}
-
-func checkWrongData(err *util.RestError) (bool, string) {
-	return checkError(err, http.StatusBadRequest)
-}
-
-func checkError(err *util.RestError, expected int) (bool, string) {
-	if ok, message := checkMissingError(err); !ok {
-		return ok, message
-	}
-	return errorCodeMatch(expected, err)
-}
-
-func checkMissingError(err *util.RestError) (bool, string) {
-	if err == nil {
-		return false, missingError
-	}
-	return true, ""
-}
-
-func errorCodeMatch(expected int, found *util.RestError) (bool, string) {
-	if found.ErrorCode == expected {
-		return true, ""
-	} else {
-		return false, fmt.Sprintf("Value mismatch: expected: %d, found: %d", expected, found.ErrorCode)
-	}
-}
-
-func roleMismatch(expected *[]string, found *[]string) string {
-	return stringMismatch(strings.Join(*expected, ";"), strings.Join(*found, ";"))
-}
-
-func stringMismatch(expected string, found string) string {
-	return fmt.Sprintf("Value mismatch: expected: %s, found: %s", expected, found)
-}
-
-func checkUnexpectedError(err *util.RestError) (bool, string) {
-	if err != nil {
-		return false, unexpectedError(err)
-	}
-	return true, ""
-}
-
-const missingError = "Error expected at this point"
-
-func unexpectedError(err *util.RestError) string {
-	return fmt.Sprintf("Unexpected error: %s", err.Error())
-}
-
 func initializeTesteeUserService(t *testing.T) service.UserService {
 	key, err := uuid.NewRandom()
 	if err != nil {
@@ -635,5 +545,10 @@ func initializeTesteeUserService(t *testing.T) service.UserService {
 	util.InitializeJwtService([]byte(key.String()))
 
 	store := store.CreateMemoryStore()
-	return service.NewUserService(store)
+	usrv, serr := service.NewUserService(store)
+	if ok, message := checkUnexpectedError(serr); !ok {
+		t.Fatal(message)
+	}
+
+	return usrv
 }

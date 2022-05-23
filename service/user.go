@@ -10,6 +10,8 @@ type User struct {
 	Password string `json:"password"`
 
 	Roles *[]string `json:"roles"`
+
+	RefreshToken string `json:"refresh_token"`
 }
 
 func EncodeUser(user *User) ([]byte, error) {

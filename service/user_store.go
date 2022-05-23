@@ -8,4 +8,5 @@ type UserStore interface {
 	GetUser(username string) *User
 	DeleteUser(user *User) error
 	GetUsers() *[]User
+	RestoreUsers(*[]User) error
 }

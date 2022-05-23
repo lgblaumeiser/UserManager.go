@@ -5,6 +5,8 @@ package service_test
 import (
 	"net/http"
 	"testing"
+
+	"github.com/lgblaumeiser/usermanager/service"
 )
 
 func TestBackupAndRestore(t *testing.T) {
@@ -32,12 +34,12 @@ func TestBackupAndRestore(t *testing.T) {
 		t.Fatalf(message)
 	}
 
-	_, err = us.AuthenticateUser(testUser, testPassword)
+	_, _, err = us.AuthenticateUser(testUser, testPassword)
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(altUser, altPassword)
+	_, _, err = us.AuthenticateUser(altUser, altPassword)
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatal(message)
 	}
@@ -68,19 +70,48 @@ func TestBackupAndRestoreExistingUser(t *testing.T) {
 		t.Fatal(message)
 	}
 
+	result, err = us.RegisterUser(thirdUser, thirdPassword, &altRoles)
+	if ok, message := checkUsernameResult(thirdUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
+	result, err = us.ChangePassword(adminUser, testPassword, adminUser)
+	if ok, message := checkUsernameResult(adminUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
 	err = us.Restore(adminUser, zipData)
 	if ok, message := checkUnexpectedError(err); !ok {
 		t.Fatalf(message)
 	}
 
-	expectedRoles := append(testRoles, altRoles...)
-	result, err = us.AuthenticateUser(testUser, altPassword)
-	if ok, message := checkAuthenticationResult(testUser, &expectedRoles, result, err); !ok {
+	access, refresh, err := us.AuthenticateUser(testUser, testPassword)
+	if ok, message := checkAuthenticationResult(testUser, &testRoles, access, refresh, err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.AuthenticateUser(altUser, altPassword)
-	if ok, message := checkUnexpectedError(err); !ok {
+	_, _, err = us.AuthenticateUser(testUser, altPassword)
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
+		t.Fatal(message)
+	}
+
+	access, refresh, err = us.AuthenticateUser(adminUser, adminPassword)
+	if ok, message := checkAuthenticationResult(adminUser, &[]string{service.AdminRole}, access, refresh, err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.AuthenticateUser(adminUser, testPassword)
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
+		t.Fatal(message)
+	}
+
+	access, refresh, err = us.AuthenticateUser(altUser, altPassword)
+	if ok, message := checkAuthenticationResult(altUser, &altRoles, access, refresh, err); !ok {
+		t.Fatal(message)
+	}
+
+	_, _, err = us.AuthenticateUser(thirdUser, thirdPassword)
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 }

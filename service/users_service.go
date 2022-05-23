@@ -19,16 +19,21 @@ type UserService struct {
 	store UserStore
 }
 
-func NewUserService(storeimpl UserStore) UserService {
+func NewUserService(storeimpl UserStore) (UserService, *util.RestError) {
 	usrv := UserService{storeimpl}
 
 	user := usrv.store.GetUser(adminUser)
 	if user == nil {
-		user = &User{adminUser, adminPassword, &[]string{AdminRole}}
+		encryptedPW, err := util.EncryptPassword(adminPassword)
+		if err != nil {
+			return usrv, err
+		}
+
+		user = &User{adminUser, encryptedPW, &[]string{AdminRole}, ""}
 		usrv.store.StoreUser(user)
 	}
 
-	return usrv
+	return usrv, nil
 }
 
 func (us *UserService) RegisterUser(username string, password string, roles *[]string) (string, *util.RestError) {
@@ -51,7 +56,7 @@ func (us *UserService) RegisterUser(username string, password string, roles *[]s
 		return "", err
 	}
 
-	newUser := User{username, encryptedPW, newRoles}
+	newUser := User{username, encryptedPW, newRoles, ""}
 	user, ok, gerr := us.store.AddUser(&newUser)
 	if gerr != nil {
 		return "", util.UnexpectedBehavior(&gerr)
@@ -88,7 +93,7 @@ func (us *UserService) ChangePassword(username string, password string, requesto
 		return "", err
 	}
 
-	changedUser := User{userObj.Username, encryptedPW, userObj.Roles}
+	changedUser := User{userObj.Username, encryptedPW, userObj.Roles, userObj.RefreshToken}
 	user, gerr := us.store.StoreUser(&changedUser)
 	if gerr != nil {
 		return "", util.UnexpectedBehavior(&gerr)
@@ -131,7 +136,7 @@ func (us *UserService) ChangeRoles(username string, requestor string, newRoles *
 		return "", util.IllegalArgument("no role left")
 	}
 
-	var changedUser = User{userObj.Username, userObj.Password, changedRoles}
+	var changedUser = User{userObj.Username, userObj.Password, changedRoles, userObj.RefreshToken}
 	user, gerr := us.store.StoreUser(&changedUser)
 	if gerr != nil {
 		return "", util.UnexpectedBehavior(&gerr)
@@ -171,27 +176,31 @@ func (us *UserService) DeleteUser(username string, requestor string) *util.RestE
 	return nil
 }
 
-func (us *UserService) AuthenticateUser(username string, password string) (string, *util.RestError) {
-	// TODO Return two tokens, a refresh token as well, duration of token is 30 minutes and 2 weeks
+func (us *UserService) AuthenticateUser(username string, password string) (string, string, *util.RestError) {
 	if !util.IsCleanAlphanumericString(username) {
-		return "", util.IllegalArgument("username")
+		return "", "", util.IllegalArgument("username")
 	}
 	if !util.IsCleanString(password) {
-		return "", util.IllegalArgument("password")
+		return "", "", util.IllegalArgument("password")
 	}
 
 	userObj := us.store.GetUser(username)
 	if userObj == nil {
-		return "", util.IllegalArgument("unknown user")
+		return "", "", util.UnauthorizedUser()
 	}
 
 	err := util.CheckPassword(userObj.Password, password)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	user, err := util.CreateToken(userObj.Username, userObj.Roles)
-	return user, err
+	accessToken, refreshToken, refreshId, err := util.CreateToken(userObj.Username, userObj.Roles)
+	userObj.RefreshToken = refreshId
+	_, ioerr := us.store.StoreUser(userObj)
+	if ioerr != nil {
+		return "", "", util.UnexpectedBehavior(&ioerr)
+	}
+	return accessToken, refreshToken, err
 }
 
 func (us *UserService) Backup(requestor string) (*[]byte, *util.RestError) {
@@ -232,6 +241,7 @@ func (us *UserService) Restore(requestor string, userData *[]byte) *util.RestErr
 		return util.MissingAdminRights()
 	}
 
+	restoreData := []User{}
 	userMap, err := util.UnzipContent(*userData)
 	if err != nil {
 		return util.UnexpectedBehavior(&err)
@@ -241,23 +251,12 @@ func (us *UserService) Restore(requestor string, userData *[]byte) *util.RestErr
 		if err != nil {
 			return util.UnexpectedBehavior(&err)
 		}
-		existing := us.store.GetUser(user.Username)
-		if existing == nil {
-			_, _, err := us.store.AddUser(user)
-			if err != nil {
-				return util.UnexpectedBehavior(&err)
-			}
-		} else {
-			adaptedRoles, rerr := us.addAndRemoveRoles(user.Roles, existing.Roles, &[]string{}, true)
-			if rerr != nil {
-				return rerr
-			}
-			adaptedUser := User{user.Username, existing.Password, adaptedRoles}
-			_, err := us.store.StoreUser(&adaptedUser)
-			if err != nil {
-				return util.UnexpectedBehavior(&err)
-			}
-		}
+		restoreData = append(restoreData, *user)
+	}
+
+	err = us.store.RestoreUsers(&restoreData)
+	if err != nil {
+		return util.UnexpectedBehavior(&err)
 	}
 
 	return nil

@@ -7,11 +7,11 @@ import (
 )
 
 type MemoryStore struct {
-	userMap map[string]*service.User
+	userMap map[string]service.User
 }
 
 func CreateMemoryStore() *MemoryStore {
-	store := MemoryStore{userMap: map[string]*service.User{}}
+	store := MemoryStore{userMap: map[string]service.User{}}
 	return &store
 }
 
@@ -19,12 +19,12 @@ func (m *MemoryStore) AddUser(user *service.User) (string, bool, error) {
 	if _, ok := m.userMap[user.Username]; ok {
 		return "", false, nil
 	}
-	m.userMap[user.Username] = user
+	m.userMap[user.Username] = *user
 	return user.Username, true, nil
 }
 
 func (m *MemoryStore) StoreUser(user *service.User) (string, error) {
-	m.userMap[user.Username] = user
+	m.userMap[user.Username] = *user
 	return user.Username, nil
 }
 
@@ -33,7 +33,8 @@ func (m *MemoryStore) GetUser(username string) *service.User {
 	if !ok {
 		return nil
 	}
-	return user
+	returnUser := user
+	return &returnUser
 }
 
 func (m *MemoryStore) DeleteUser(user *service.User) error {
@@ -44,7 +45,16 @@ func (m *MemoryStore) DeleteUser(user *service.User) error {
 func (m *MemoryStore) GetUsers() *[]service.User {
 	users := []service.User{}
 	for _, user := range m.userMap {
-		users = append(users, *user)
+		users = append(users, user)
 	}
 	return &users
+}
+
+func (m *MemoryStore) RestoreUsers(users *[]service.User) error {
+	newUserMap := map[string]service.User{}
+	for _, user := range *users {
+		newUserMap[user.Username] = user
+	}
+	m.userMap = newUserMap
+	return nil
 }

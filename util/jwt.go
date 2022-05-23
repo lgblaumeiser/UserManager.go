@@ -14,44 +14,13 @@ import (
 
 var emptyList = []string{}
 
-const tokenDurationInHours = 18
+const accessTokenDurationInMinutes = 30
+const refreshTokenDurationInDays = 14
 
 var jwtKey []byte
 
 func InitializeJwtService(key []byte) {
 	jwtKey = key
-}
-
-func CreateToken(username string, roles *[]string) (string, *RestError) {
-	if !IsCleanAlphanumericString(username) {
-		return "", IllegalArgument("username")
-	}
-	roleString := encodeRoles(roles)
-	if !isRoleString(roleString) {
-		return "", IllegalArgument("roles")
-	}
-
-	expirationDate := time.Now().Add(tokenDurationInHours * time.Hour)
-	tokenID, err := uuid.NewRandom()
-	if err != nil {
-		return "", UnexpectedBehavior(&err)
-	}
-
-	claims := jwt.MapClaims{
-		"id":       tokenID,
-		"username": username,
-		"roles":    roleString,
-		"exp":      expirationDate.Unix(),
-		"iat":      time.Now().Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		return "", UnexpectedBehavior(&err)
-	}
-
-	return tokenString, nil
 }
 
 func ParseToken(tokenString string) (string, *[]string, *RestError) {
@@ -76,12 +45,62 @@ func ParseToken(tokenString string) (string, *[]string, *RestError) {
 		wrapped := errors.New("Username not defined in token")
 		return "", &emptyList, UnexpectedBehavior(&wrapped)
 	}
-	roles := claims["roles"].(string)
-	if !isRoleString(roles) {
-		wrapped := errors.New("Roles not defined in token")
-		return "", &emptyList, UnexpectedBehavior(&wrapped)
+	roles := ""
+	rawRoles := claims["roles"]
+	if rawRoles != nil {
+		roles = rawRoles.(string)
+		if !isRoleString(roles) {
+			wrapped := errors.New("Roles not defined in token")
+			return "", &emptyList, UnexpectedBehavior(&wrapped)
+		}
 	}
 	return username, decodeRoles(roles), nil
+}
+
+// Returns accessToken, refreshToken, refreshTokenId, potential error
+func CreateToken(username string, roles *[]string) (string, string, string, *RestError) {
+	if !IsCleanAlphanumericString(username) {
+		return "", "", "", IllegalArgument("username")
+	}
+	roleString := encodeRoles(roles)
+	if !isRoleString(roleString) {
+		return "", "", "", IllegalArgument("roles")
+	}
+
+	accessToken, _, err := createTokenWithClaims(accessTokenDurationInMinutes, jwt.MapClaims{
+		"username": username,
+		"roles":    roleString,
+	})
+	if err != nil {
+		return "", "", "", err
+	}
+
+	refreshToken, refreshId, err := createTokenWithClaims(refreshTokenDurationInDays*24*60, jwt.MapClaims{"username": username})
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return accessToken, refreshToken, refreshId, nil
+}
+
+func createTokenWithClaims(duration time.Duration, claims jwt.MapClaims) (string, string, *RestError) {
+	expirationDate := time.Now().Add(duration * time.Minute)
+	tokenID, err := uuid.NewRandom()
+	if err != nil {
+		return "", "", UnexpectedBehavior(&err)
+	}
+
+	claims["id"] = tokenID
+	claims["exp"] = expirationDate.Unix()
+	claims["iat"] = time.Now().Unix()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		return "", "", UnexpectedBehavior(&err)
+	}
+
+	return tokenString, tokenID.String(), nil
 }
 
 var isRoleList = regexp.MustCompile(`^[A-Za-z0-9-_.;]+$`).MatchString
@@ -98,6 +117,9 @@ func encodeRoles(roles *[]string) string {
 }
 
 func decodeRoles(roles string) *[]string {
+	if roles == "" {
+		return nil
+	}
 	rolelist := strings.Split(roles, RoleSeparator)
 	return &rolelist
 }

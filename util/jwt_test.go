@@ -14,14 +14,14 @@ var testRoles = []string{"some_admin", "some_role", "another_role"}
 func TestTokenCleanPath(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	token, err := CreateToken(testUsername, &testRoles)
+	accessToken, refreshToken, _, err := CreateToken(testUsername, &testRoles)
 	if err != nil {
 		t.Errorf("Create Token failed: %s", err.Error())
 	}
 
-	puser, proles, err := ParseToken(token)
+	puser, proles, err := ParseToken(accessToken)
 	if err != nil {
-		t.Errorf("Parse Token failed: %s", err.Error())
+		t.Errorf("Parse access token failed: %s", err.Error())
 	}
 	if puser != testUsername {
 		t.Errorf("Expexted username: %s ; found username: %s", testUsername, puser)
@@ -29,29 +29,40 @@ func TestTokenCleanPath(t *testing.T) {
 	if !TwoStringListsHaveSameContent(&testRoles, proles) {
 		t.Errorf("Role size mismatch, expected %s, found %s", encodeRoles(&testRoles), encodeRoles(proles))
 	}
+
+	puser, proles, err = ParseToken(refreshToken)
+	if err != nil {
+		t.Errorf("Parse refresh token failed: %s", err.Error())
+	}
+	if puser != testUsername {
+		t.Errorf("Expexted username: %s ; found username: %s", testUsername, puser)
+	}
+	if proles != nil {
+		t.Errorf("Expected roles to be empty for refresh token")
+	}
 }
 
 func TestWithWrongData(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	_, err := CreateToken("", &testRoles)
+	_, _, _, err := CreateToken("", &testRoles)
 	if err == nil {
 		t.Errorf("Create Token should have failed")
 	}
 	initializeTesteeJwt(t)
 
-	_, err = CreateToken("  \t", &testRoles)
+	_, _, _, err = CreateToken("  \t", &testRoles)
 	if err == nil {
 		t.Errorf("Create Token should have failed")
 	}
 	initializeTesteeJwt(t)
 
-	_, err = CreateToken(testUsername, nil)
+	_, _, _, err = CreateToken(testUsername, nil)
 	if err == nil {
 		t.Errorf("Create Token should have failed")
 	}
 
-	_, err = CreateToken(testUsername, &emptyList)
+	_, _, _, err = CreateToken(testUsername, &emptyList)
 	if err == nil {
 		t.Errorf("Create Token should have failed")
 	}
@@ -60,7 +71,7 @@ func TestWithWrongData(t *testing.T) {
 func TestWithWrongKey(t *testing.T) {
 	initializeTesteeJwt(t)
 
-	token, err := CreateToken(testUsername, &testRoles)
+	token, _, _, err := CreateToken(testUsername, &testRoles)
 	if err != nil {
 		t.Errorf("Token creation failed: %s", err.Error())
 	}

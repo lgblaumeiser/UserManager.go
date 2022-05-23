@@ -27,7 +27,10 @@ func main() {
 	log.Printf("Server started")
 
 	store := store.CreateMemoryStore()
-	userService := service.NewUserService(store)
+	userService, rerr := service.NewUserService(store)
+	if rerr != nil {
+		panic(rerr)
+	}
 
 	InfrastructureApiController := rest.NewInfrastructureApiController(&userService)
 	UsersApiController := rest.NewUsersApiController(&userService)

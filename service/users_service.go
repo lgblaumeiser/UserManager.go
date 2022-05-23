@@ -97,7 +97,9 @@ func (us *UserService) ChangePassword(username string, password string, requesto
 }
 
 func (us *UserService) ChangeRoles(username string, requestor string, newRoles *[]string, obsRoles *[]string) (string, *util.RestError) {
-	// TODO if username is empty, use requestor
+	if username == "" {
+		username = requestor
+	}
 	if !util.IsCleanAlphanumericString(username) {
 		return "", util.IllegalArgument("username")
 	}

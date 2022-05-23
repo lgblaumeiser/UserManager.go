@@ -302,7 +302,15 @@ func TestChangeRoles(t *testing.T) {
 		t.Fatal(message)
 	}
 
-	result, err = us.ChangeRoles(testUser, adminUser, &[]string{testRoles[1], testRoles[2]}, &altRoles)
+	result, err = us.ChangeRoles("", testUser, &[]string{testRoles[2]}, &[]string{testRoles[0]})
+	if ok, message := checkUsernameResult(testUser, result, err); !ok {
+		t.Fatal(message)
+	}
+	if ok, message := checkRolesForUserPW(testUser, testPassword, &[]string{testRoles[2], altRoles[0], altRoles[1]}, &us); !ok {
+		t.Fatal(message)
+	}
+
+	result, err = us.ChangeRoles(testUser, adminUser, &[]string{testRoles[0], testRoles[1]}, &altRoles)
 	if ok, message := checkUsernameResult(testUser, result, err); !ok {
 		t.Fatal(message)
 	}
@@ -364,12 +372,7 @@ func TestChangeRoles(t *testing.T) {
 func TestChangeRolesWrongData(t *testing.T) {
 	us := initializeTesteeUserService(t)
 
-	_, err := us.ChangeRoles("", adminUser, &testRoles, &altRoles)
-	if ok, message := checkWrongData(err); !ok {
-		t.Fatal(message)
-	}
-
-	_, err = us.ChangeRoles("str@ngeUser", adminUser, &testRoles, &altRoles)
+	_, err := us.ChangeRoles("str@ngeUser", adminUser, &testRoles, &altRoles)
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}

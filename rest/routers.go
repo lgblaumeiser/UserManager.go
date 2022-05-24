@@ -76,7 +76,7 @@ func handleError(err *util.RestError, w http.ResponseWriter, uri string) bool {
 			werr := *err.WrappedError
 			errorMessage = errorMessage + " : " + werr.Error()
 		}
-		log.Printf("An error occured for %s: %s:", uri, errorMessage)
+		log.Printf("An error occured for %s: %s", uri, errorMessage)
 		return false
 	}
 	return true

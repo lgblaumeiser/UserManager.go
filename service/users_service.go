@@ -69,6 +69,9 @@ func (us *UserService) RegisterUser(username string, password string, roles *[]s
 }
 
 func (us *UserService) ChangePassword(username string, password string, requestor string) (string, *util.RestError) {
+	if username == "" {
+		username = requestor
+	}
 	if !util.IsCleanAlphanumericString(username) {
 		return "", util.IllegalArgument("username")
 	}
@@ -76,7 +79,7 @@ func (us *UserService) ChangePassword(username string, password string, requesto
 		return "", util.IllegalArgument("password")
 	}
 	if !util.IsCleanAlphanumericString(requestor) {
-		return "", util.IllegalArgument("requestor")
+		return "", util.UnauthorizedUser()
 	}
 
 	userObj := us.store.GetUser(username)
@@ -110,7 +113,7 @@ func (us *UserService) ChangeRoles(username string, requestor string, newRoles *
 		return "", util.IllegalArgument("username")
 	}
 	if !util.IsCleanAlphanumericString(requestor) {
-		return "", util.IllegalArgument("requestor")
+		return "", util.UnauthorizedUser()
 	}
 	if !us.areCleanRoles(newRoles) {
 		return "", util.IllegalArgument("newRoles")
@@ -150,7 +153,7 @@ func (us *UserService) DeleteUser(username string, requestor string) *util.RestE
 		return util.IllegalArgument("username")
 	}
 	if !util.IsCleanAlphanumericString(requestor) {
-		return util.IllegalArgument("requestor")
+		return util.UnauthorizedUser()
 	}
 
 	if username == adminUser {
@@ -253,7 +256,7 @@ func (us *UserService) InvalidateToken(username string) *util.RestError {
 
 func (us *UserService) Backup(requestor string) (*[]byte, *util.RestError) {
 	if !util.IsCleanAlphanumericString(requestor) {
-		return nil, util.IllegalArgument("requestor")
+		return nil, util.UnauthorizedUser()
 	}
 
 	requestorObj := us.store.GetUser(requestor)
@@ -280,7 +283,7 @@ func (us *UserService) Backup(requestor string) (*[]byte, *util.RestError) {
 
 func (us *UserService) Restore(requestor string, userData *[]byte) *util.RestError {
 	if !util.IsCleanAlphanumericString(requestor) {
-		return util.IllegalArgument("requestor")
+		return util.UnauthorizedUser()
 	}
 
 	requestorObj := us.store.GetUser(requestor)

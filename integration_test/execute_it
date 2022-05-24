@@ -1,0 +1,215 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
+# SPDX-License-Identifier: MIT
+
+STATUS=$(curl -s --write-out %{http_code} -o token.txt -X POST http://localhost:19749/users/authenticate \
+        -H 'Content-Type: application/json' -d '{"username":"admin","password":"admin"}')
+echo "Authentication of admin resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+ACCESS=$(cat token.txt | jq -r '.access_token')
+REFRESH=$(cat token.txt | jq -r '.refresh_token')
+
+rm token.txt
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PUT http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"username":"admin","password":"S@vePassword"}')
+echo "Change admin password resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PUT http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"username":"user1","password":"S@veP@ssword"}')
+echo "Change user1 password resulted in $STATUS"
+if [ $STATUS -ne 400 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X POST http://localhost:19749/users \
+        -H 'Content-Type: application/json' -d '{"username":"user1","password":"GoodPw"}')
+echo "Register user1 resulted in $STATUS"
+if [ $STATUS -ne 201 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X POST http://localhost:19749/users \
+        -H 'Content-Type: application/json' -d '{"username":"user1","password":"AnotherPw"}')
+echo "Register user1 resulted in $STATUS"
+if [ $STATUS -ne 400 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X POST http://localhost:19749/users \
+        -H 'Content-Type: application/json' -d '{"username":"user2","password":"AnotherPw"}')
+echo "Register user2 resulted in $STATUS"
+if [ $STATUS -ne 201 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o token.txt -X POST http://localhost:19749/users/authenticate \
+        -H 'Content-Type: application/json' -d '{"username":"user1","password":"GoodPw"}')
+echo "Authentication of user1 resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+ACCESS=$(cat token.txt | jq -r '.access_token')
+REFRESH=$(cat token.txt | jq -r '.refresh_token')
+
+rm token.txt
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PUT http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"password":"S@veP@ssword"}')
+echo "Change password resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PUT http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"username":"user2","password":"S@veP@ssword"}')
+echo "Change password resulted in $STATUS"
+if [ $STATUS -ne 403 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PUT http://localhost:19749/users \
+        -H 'Content-Type: application/json' -d '{"username":"user1","password":"MyP@ssword"}')
+echo "Change password resulted in $STATUS"
+if [ $STATUS -ne 401 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PATCH http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"username":"user1","addroles":["role1","role2"]}')
+echo "Change roles resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PATCH http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"addroles":["role3"],"removeroles":["role1"]}')
+echo "Change roles resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X GET http://localhost:19749/users/token -H "Authorization: Bearer $ACCESS")
+echo "Refresh token resulted in $STATUS"
+if [ $STATUS -ne 401 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o token.txt -X GET http://localhost:19749/users/token -H "Authorization: Bearer $REFRESH")
+echo "Refresh token resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+ACCESS=$(cat token.txt | jq -r '.access_token')
+REFRESH=$(cat token.txt | jq -r '.refresh_token')
+
+rm token.txt
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PUT http://localhost:19749/users/token \
+        -H 'Content-Type: application/json' -d '{"username":"user1"}')
+echo "Invalidate token resulted in $STATUS"
+if [ $STATUS -ne 204 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X GET http://localhost:19749/users/token -H "Authorization: Bearer $ACCESS")
+echo "Refresh token resulted in $STATUS"
+if [ $STATUS -ne 401 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X DELETE http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"username":"user1"}')
+echo "Delete user1 resulted in $STATUS"
+if [ $STATUS -ne 403 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o token.txt -X POST http://localhost:19749/users/authenticate \
+        -H 'Content-Type: application/json' -d '{"username":"admin","password":"S@vePassword"}')
+echo "Authentication of admin resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+ACCESS=$(cat token.txt | jq -r '.access_token')
+REFRESH=$(cat token.txt | jq -r '.refresh_token')
+
+rm token.txt
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X DELETE http://localhost:19749/users \
+        -H 'Content-Type: application/json' -H "Authorization: Bearer $ACCESS" -d '{"username":"user2"}')
+echo "Delete user2 resulted in $STATUS"
+if [ $STATUS -ne 204 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o data.zip -X GET http://localhost:19749/backup -H "Authorization: Bearer $ACCESS")
+echo "Backup resulted in $STATUS"
+if [ $STATUS -ne 200 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+STATUS=$(curl -s --write-out %{http_code} -o /dev/null -X PUT http://localhost:19749/backup \
+        -H "Content-Type: application/zip" -H "Authorization: Bearer $ACCESS" --data-binary @data.zip)
+echo "Restore resulted in $STATUS"
+if [ $STATUS -ne 204 ]
+    then
+        echo "Failing test ... Aborting"
+        exit 1
+fi
+
+rm data.zip
+
+curl -s -X GET http://localhost:19749/licenses
+
+echo "Test successful"
+exit 0

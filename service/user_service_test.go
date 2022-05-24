@@ -182,6 +182,11 @@ func TestChangePassword(t *testing.T) {
 		t.Fatal(message)
 	}
 
+	result, err = us.ChangePassword("", "ChangedPWAgain", testUser)
+	if ok, message := checkUsernameResult(testUser, result, err); !ok {
+		t.Fatal(message)
+	}
+
 	result, err = us.ChangePassword(testUser, "AnotherChanged", adminUser)
 	if ok, message := checkUsernameResult(testUser, result, err); !ok {
 		t.Fatal(message)
@@ -221,12 +226,7 @@ func TestChangePassword(t *testing.T) {
 func TestChangePasswordWrongData(t *testing.T) {
 	us := initializeTesteeUserService(t)
 
-	_, err := us.ChangePassword("", testPassword, adminUser)
-	if ok, message := checkWrongData(err); !ok {
-		t.Fatal(message)
-	}
-
-	_, err = us.ChangePassword("str@ngeUser", testPassword, adminUser)
+	_, err := us.ChangePassword("str@ngeUser", testPassword, adminUser)
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
@@ -252,22 +252,22 @@ func TestChangePasswordWrongData(t *testing.T) {
 	}
 
 	_, err = us.ChangePassword(testUser, testPassword, "")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	_, err = us.ChangePassword(testUser, testPassword, "str@ngeUser")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	_, err = us.ChangePassword(testUser, testPassword, "\tsomething")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	_, err = us.ChangePassword(testUser, testPassword, "some thing")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 }
@@ -379,61 +379,61 @@ func TestChangeRolesWrongData(t *testing.T) {
 	}
 
 	_, err = us.ChangeRoles(testUser, "", &testRoles, &altRoles)
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	_, err = us.ChangeRoles(testUser, "str@ngeUser", &testRoles, &altRoles)
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	_, err = us.ChangeRoles(testUser, "\tsomething", &testRoles, &altRoles)
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	_, err = us.ChangeRoles(testUser, "some thing", &testRoles, &altRoles)
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
+		t.Fatal(message)
+	}
+
+	_, err = us.ChangeRoles(testUser, adminUser, nil, &[]string{})
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.ChangeRoles(testUser, testPassword, nil, &[]string{})
+	_, err = us.ChangeRoles(testUser, adminUser, &[]string{""}, &[]string{})
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.ChangeRoles(testUser, testPassword, &[]string{""}, &[]string{})
+	_, err = us.ChangeRoles(testUser, adminUser, &[]string{" somerole"}, &[]string{})
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.ChangeRoles(testUser, testPassword, &[]string{" somerole"}, &[]string{})
+	_, err = us.ChangeRoles(testUser, adminUser, &[]string{"some role"}, &[]string{})
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.ChangeRoles(testUser, testPassword, &[]string{"some role"}, &[]string{})
+	_, err = us.ChangeRoles(testUser, adminUser, &[]string{}, nil)
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, nil)
+	_, err = us.ChangeRoles(testUser, adminUser, &[]string{}, &[]string{""})
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{""})
+	_, err = us.ChangeRoles(testUser, adminUser, &[]string{}, &[]string{" somerole"})
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
 
-	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{" somerole"})
-	if ok, message := checkWrongData(err); !ok {
-		t.Fatal(message)
-	}
-
-	_, err = us.ChangeRoles(testUser, testPassword, &[]string{}, &[]string{"some role"})
+	_, err = us.ChangeRoles(testUser, adminUser, &[]string{}, &[]string{"some role"})
 	if ok, message := checkWrongData(err); !ok {
 		t.Fatal(message)
 	}
@@ -517,22 +517,22 @@ func TestDeleteUserWrongData(t *testing.T) {
 	}
 
 	err = us.DeleteUser(testUser, "")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	err = us.DeleteUser(testUser, "str@ngeUser")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	err = us.DeleteUser(testUser, "\tsomething")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 
 	err = us.DeleteUser(testUser, "some thing")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Fatal(message)
 	}
 }

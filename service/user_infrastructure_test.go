@@ -125,7 +125,7 @@ func TestBackupAndRestoreWrongData(t *testing.T) {
 	}
 
 	_, err = us.Backup("  any")
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Error(message)
 	}
 
@@ -142,7 +142,7 @@ func TestBackupAndRestoreWrongData(t *testing.T) {
 	us = initializeTesteeUserService(t)
 
 	err = us.Restore("  any", data)
-	if ok, message := checkWrongData(err); !ok {
+	if ok, message := checkError(err, http.StatusUnauthorized); !ok {
 		t.Error(message)
 	}
 

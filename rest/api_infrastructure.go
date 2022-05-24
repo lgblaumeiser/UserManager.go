@@ -76,7 +76,7 @@ func (c *InfrastructureApiController) Restore(w http.ResponseWriter, r *http.Req
 
 	body, zerr := ioutil.ReadAll(r.Body)
 	if zerr != nil {
-		handleError(util.UnexpectedBehavior(&zerr), w, r.RequestURI)
+		handleError(util.IllegalArgument(zerr.Error()), w, r.RequestURI)
 		return
 	}
 

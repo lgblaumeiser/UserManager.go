@@ -194,7 +194,7 @@ func extractUserDataFromRequest(r *http.Request) *UserData {
 
 	err := d.Decode(&userDataParam)
 	if err != nil {
-		return nil
+		return &userDataParam
 	}
 	return &userDataParam
 }

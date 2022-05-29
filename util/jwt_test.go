@@ -27,7 +27,7 @@ func TestTokenCleanPath(t *testing.T) {
 		t.Errorf("Expexted username: %s ; found username: %s", testUsername, puser)
 	}
 	if !TwoStringListsHaveSameContent(&testRoles, proles) {
-		t.Errorf("Role size mismatch, expected %s, found %s", encodeRoles(&testRoles), encodeRoles(proles))
+		t.Errorf("Role size mismatch, expected %s, found %s", EncodeRoles(&testRoles), EncodeRoles(proles))
 	}
 
 	puser, proles, tokenId, err := ParseToken(refreshToken)
@@ -83,38 +83,6 @@ func TestWithWrongKey(t *testing.T) {
 	_, _, _, err = ParseToken(token)
 	if err == nil {
 		t.Errorf("Token validation should have failed")
-	}
-}
-
-func TestIsRoleString(t *testing.T) {
-	if !isRoleString("aBZ7_.78-gT;fjksdafh") {
-		t.Errorf("string check failed")
-	}
-
-	if !isRoleString("_aBZ7gT") {
-		t.Errorf("string check failed")
-	}
-
-	if isRoleString("a$6783;hgz") {
-		t.Errorf("string check failed")
-	}
-
-	if isRoleString("  6dfahkj;\t65dfhj") {
-		t.Errorf("string check failed")
-	}
-}
-
-func TestRoleListEncoding(t *testing.T) {
-	roles := []string{"role_1", "role_2", "role_3"}
-	roleString := "role_1;role_2;role_3"
-
-	encoded := encodeRoles(&roles)
-	if encoded != roleString {
-		t.Errorf("Encoding roles failed, expected %s, found %s", roleString, encoded)
-	}
-
-	if !TwoStringListsHaveSameContent(decodeRoles(encoded), &roles) {
-		t.Error("Roles do not match")
 	}
 }
 

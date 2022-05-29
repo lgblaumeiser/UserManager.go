@@ -58,3 +58,7 @@ func (m *MemoryStore) RestoreUsers(users *[]service.User) error {
 	m.userMap = newUserMap
 	return nil
 }
+
+func (m *MemoryStore) CloseStore() {
+	// Nothing to do
+}

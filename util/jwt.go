@@ -4,7 +4,6 @@ package util
 
 import (
 	"errors"
-	"regexp"
 	"strings"
 	"time"
 
@@ -56,7 +55,7 @@ func ParseToken(tokenString string) (string, *[]string, string, *RestError) {
 	}
 	tokenId := claims["id"].(string)
 
-	return username, decodeRoles(roles), tokenId, nil
+	return username, DecodeRoles(roles), tokenId, nil
 }
 
 // Returns accessToken, refreshToken, refreshTokenId, potential error
@@ -64,7 +63,7 @@ func CreateToken(username string, roles *[]string) (string, string, string, *Res
 	if !IsCleanAlphanumericString(username) {
 		return "", "", "", IllegalArgument("username")
 	}
-	roleString := encodeRoles(roles)
+	roleString := EncodeRoles(roles)
 	if !isRoleString(roleString) {
 		return "", "", "", IllegalArgument("roles")
 	}
@@ -103,25 +102,4 @@ func createTokenWithClaims(duration time.Duration, claims jwt.MapClaims) (string
 	}
 
 	return tokenString, tokenID.String(), nil
-}
-
-var isRoleList = regexp.MustCompile(`^[A-Za-z0-9-_.;]+$`).MatchString
-
-func isRoleString(raw string) bool {
-	return len(raw) > 0 && isRoleList(raw)
-}
-
-func encodeRoles(roles *[]string) string {
-	if roles == nil || len(*roles) == 0 {
-		return ""
-	}
-	return strings.Join(*roles, RoleSeparator)
-}
-
-func decodeRoles(roles string) *[]string {
-	if roles == "" {
-		return nil
-	}
-	rolelist := strings.Split(roles, RoleSeparator)
-	return &rolelist
 }

@@ -9,4 +9,6 @@ type UserStore interface {
 	DeleteUser(user *User) error
 	GetUsers() *[]User
 	RestoreUsers(*[]User) error
+
+	CloseStore()
 }

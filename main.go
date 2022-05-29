@@ -12,10 +12,13 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 
 	_ "github.com/lgblaumeiser/usermanager/statik"
+	"github.com/lgblaumeiser/usermanager/util"
 	"github.com/rakyll/statik/fs"
 
 	"github.com/lgblaumeiser/usermanager/rest"
@@ -26,8 +29,35 @@ import (
 func main() {
 	log.Printf("Server started")
 
-	store := store.CreateMemoryStore()
-	userService, rerr := service.NewUserService(store)
+	var srvport int
+
+	var dbhost string
+	var dbport int
+	var dbuser string
+	var dbpawd string
+	var dbname string
+
+	flag.IntVar(&srvport, "srvport", 8080, "service port")
+	flag.StringVar(&dbhost, "dbhost", "", "database hostname")
+	flag.IntVar(&dbport, "dbport", -1, "database port")
+	flag.StringVar(&dbuser, "dbuser", "", "database username")
+	flag.StringVar(&dbpawd, "dbpwd", "", "database user password")
+	flag.StringVar(&dbname, "dbname", "", "database name")
+	flag.Parse()
+
+	var database service.UserStore
+	var rerr *util.RestError
+	if dbport == -1 {
+		database, rerr = store.ConnectPostgresStore(dbhost, dbport, dbuser, dbpawd, dbname)
+		if rerr != nil {
+			panic(rerr)
+		}
+	} else {
+		database = store.CreateMemoryStore()
+	}
+	defer database.CloseStore()
+
+	userService, rerr := service.NewUserService(database)
 	if rerr != nil {
 		panic(rerr)
 	}
@@ -46,5 +76,6 @@ func main() {
 	sh := http.StripPrefix("/openapi/", staticServer)
 	router.PathPrefix("/openapi/").Handler(sh)
 
-	log.Fatal(http.ListenAndServe(":19749", router))
+	portstring := fmt.Sprintf(":%d", srvport)
+	log.Fatal(http.ListenAndServe(portstring, router))
 }

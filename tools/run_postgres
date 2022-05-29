@@ -1,0 +1,11 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
+# SPDX-License-Identifier: MIT
+docker run  --name usermanagerdb \
+            -e POSTGRES_PASSWORD_FILE=/var/lib/postgresql/local_secrets/postgres_password \
+            -e POSTGRES_USER_FILE=/var/lib/postgresql/local_secrets/postgres_user \
+            -p 5432:5432 \
+            -v $(pwd)/secrets:/var/lib/postgresql/local_secrets \
+            -v $HOME/.postgresql/data:/var/lib/postgresql/data \
+            -d \
+            postgres:14-alpine

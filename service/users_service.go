@@ -31,7 +31,7 @@ func NewUserService(storeimpl UserStore) (UserService, *util.RestError) {
 		}
 
 		user = &User{adminUser, encryptedPW, &[]string{AdminRole}, ""}
-		usrv.store.StoreUser(user)
+		usrv.store.AddUser(user)
 	}
 
 	return usrv, nil

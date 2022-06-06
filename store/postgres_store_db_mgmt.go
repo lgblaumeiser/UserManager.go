@@ -10,102 +10,52 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func ConnectPostgresStore(host string, port int, user string, password string, database string) (*PostgresStore, *util.RestError) {
+func ConnectPostgresStore(host string, port int, user string, password string, database string) *PostgresStore {
 	if !util.IsCleanString(host) {
-		return nil, util.IllegalArgument("database host")
+		panic("database host")
 	}
-	if port <= port {
-		return nil, util.IllegalArgument("database port")
+	if port <= 0 {
+		panic("database port")
 	}
 	if !util.IsCleanString(user) {
-		return nil, util.IllegalArgument("database user")
+		panic("database user")
 	}
 	if !util.IsCleanString(password) {
-		return nil, util.IllegalArgument("database password")
+		panic("database password")
 	}
 	if !util.IsCleanString(database) {
-		return nil, util.IllegalArgument("database name")
+		panic("database name")
 	}
 
-	if err := ensureDatabase(host, port, user, password, database); err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
+	ensureDatabase(host, port, user, password, database)
+	db := openDatabase(host, port, user, password, database)
+	createTable(db)
 
-	db, err := openDatabase(host, port, user, password, database)
-	if err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	if err := createTableV1(db); err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	query := fmt.Sprintf("SELECT username, password, roles, request_id FROM %s WHERE username=?;", currentUserTableName)
-	getUserStmt, err := db.Prepare(query)
-	if err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	query = fmt.Sprintf("INSERT INTO %s (username, password, roles, request_id) VALUES (?, ?, ?, ?);", currentUserTableName)
-	insertStmt, err := db.Prepare(query)
-	if err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	query = fmt.Sprintf("UPDATE %s SET password=?, roles=?, request_id=? WHERE username=?;", currentUserTableName)
-	updateStmt, err := db.Prepare(query)
-	if err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	query = fmt.Sprintf("DELETE FROM %s	WHERE username=?;", currentUserTableName)
-	deleteStmt, err := db.Prepare(query)
-	if err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	query = fmt.Sprintf("SELECT * FROM %s;", currentUserTableName)
-	getListStmt, err := db.Prepare(query)
-	if err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	query = fmt.Sprintf("DELETE FROM %s;", currentUserTableName)
-	deleteAllStmt, err := db.Prepare(query)
-	if err != nil {
-		return nil, util.UnexpectedBehavior(&err)
-	}
-
-	return &PostgresStore{db, getUserStmt, insertStmt, updateStmt, deleteStmt, getListStmt, deleteAllStmt}, nil
+	return &PostgresStore{db}
 }
 
-func ensureDatabase(host string, port int, user string, password string, name string) error {
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=postgres, sslmode=disable", host, port, user, password)
-
-	db, err := sql.Open("postgres", psqlconn)
+func ensureDatabase(host string, port int, user string, password string, name string) {
+	db := openDatabase(host, port, user, password, "postgres")
 	defer db.Close()
-	if err != nil {
-		return err
-	}
 
-	stmt, err := db.Prepare("SELECT datname FROM pg_database")
-	defer stmt.Close()
+	stmt, err := db.Prepare("SELECT datname FROM pg_database;")
 	if err != nil {
-		return err
+		panic(err)
 	}
+	defer stmt.Close()
 
 	rows, err := stmt.Query()
-	defer rows.Close()
 	if err != nil {
-		return err
+		panic(err)
 	}
+	defer rows.Close()
 
 	create := true
 	for rows.Next() {
 		var current string
 		err = rows.Scan(&current)
 		if err != nil {
-			return err
+			panic(err)
 		}
 		if current == name {
 			create = false
@@ -113,42 +63,41 @@ func ensureDatabase(host string, port int, user string, password string, name st
 	}
 
 	if create {
-		dbcreate, err := db.Prepare("CREATE DATABASE ?")
-		defer dbcreate.Close()
+		dbcreate, err := db.Prepare(fmt.Sprintf("CREATE DATABASE %s;", name))
 		if err != nil {
-			return err
+			panic(err)
 		}
+		defer dbcreate.Close()
 
-		_, err = dbcreate.Exec(name)
+		_, err = dbcreate.Exec()
 		if err != nil {
-			return err
+			panic(err)
 		}
 	}
-
-	return nil
 }
 
-func openDatabase(host string, port int, user string, password string, name string) (*sql.DB, error) {
-	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=postgres, sslmode=disable", host, port, user, password)
+func openDatabase(host string, port int, user string, password string, name string) *sql.DB {
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, name)
 
-	return sql.Open("postgres", psqlconn)
+	db, err := sql.Open("postgres", psqlconn)
+	if err != nil {
+		panic(err)
+	}
+	return db
 }
 
 const currentUserTableName = "user_v1"
 
-func createTableV1(db *sql.DB) error {
-	queryString := `CREATE TABLE IF NOT EXISTS ? (
-		username VARCHAR(40) PRIMARY KEY,
-		password VARCHAR(80) NOT NULL,
-		roles VARCHAR(255) NOT NULL,
-		request_id VARCHAR(40)
-	 ); `
-
-	stmt, err := db.Prepare(queryString)
+func createTable(db *sql.DB) {
+	stmt, err := db.Prepare(fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS %s (username VARCHAR(40) PRIMARY KEY, password VARCHAR(80) NOT NULL, "+
+			"roles VARCHAR(255) NOT NULL, request_id VARCHAR(40));", currentUserTableName))
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	_, err = stmt.Exec(currentUserTableName)
-	return err
+	_, err = stmt.Exec()
+	if err != nil {
+		panic(err)
+	}
 }

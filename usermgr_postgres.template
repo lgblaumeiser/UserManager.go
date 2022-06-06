@@ -1,0 +1,10 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
+# SPDX-License-Identifier: MIT
+./usermanager \
+    --dbhost localhost \
+    --dbport 5432 \
+    --dbuser <your-postgress-user> \
+    --dbpwd <matching-password> \
+    --dbname $1 \
+    --srvport 19749

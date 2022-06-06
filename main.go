@@ -47,11 +47,8 @@ func main() {
 
 	var database service.UserStore
 	var rerr *util.RestError
-	if dbport == -1 {
-		database, rerr = store.ConnectPostgresStore(dbhost, dbport, dbuser, dbpawd, dbname)
-		if rerr != nil {
-			panic(rerr)
-		}
+	if dbport > -1 {
+		database = store.ConnectPostgresStore(dbhost, dbport, dbuser, dbpawd, dbname)
 	} else {
 		database = store.CreateMemoryStore()
 	}

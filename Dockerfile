@@ -1,14 +1,32 @@
-FROM golang:1.10 AS build
+FROM golang:1.18-alpine AS build
 WORKDIR /go/src
+
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+
 COPY rest ./rest
-COPY main.go .
+COPY service ./service
+COPY statik ./statik
+COPY store ./store
+COPY util ./util
+COPY main.go LICENSE entrypoint.sh ./
 
-ENV CGO_ENABLED=0
-RUN go get -d -v ./...
+RUN go build .
 
-RUN go build -a -installsuffix cgo -o rest .
+FROM alpine:3.16 AS runtime
 
-FROM scratch AS runtime
-COPY --from=build /go/src/rest ./
+RUN adduser -D -g '' usermgr
+
+ENV DBHOST=host.docker.internal
+ENV DBPORT=5432
+ENV DBUSER=postgres
+ENV DBPWD=postgres
+ENV DBNAME=usermanager
+
 EXPOSE 8080/tcp
-ENTRYPOINT ["./rest"]
+USER usermgr
+
+COPY --from=build /go/src/usermanager /go/src/LICENSE /go/src/entrypoint.sh ./
+
+ENTRYPOINT [ "./entrypoint.sh" ]

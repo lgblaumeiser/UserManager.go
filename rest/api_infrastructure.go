@@ -119,4 +119,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Used third party software and licenses:
+
+- JWT: https://github.com/golang-jwt/jwt
+  Copyright (c) 2012 Dave Grijalva
+  Copyright (c) 2021 golang-jwt maintainers
+  License: MIT
+
+- UUID: https://github.com/google/uuid
+  Copyright (c) 2009,2014 Google Inc. All rights reserved.
+  License: BSD-3-Clause
+
+- Gorilla/Mux: https://github.com/gorilla/mux
+  Copyright (c) 2012-2018 The Gorilla Authors. All rights reserved.
+  License: BSD-3-Clause
+
+- PQ/Postgres: https://github.com/lib/pq
+  Copyright (c) 2011-2013, 'pq' Contributors Portions Copyright (C) 2011 Blake Mizerany
+  License: MIT
+
+- Statik: https://github.com/rakyll/statik
+  Copyright 2014 Google Inc. All Rights Reserved.
+  License: Apache-2.0
+
+- Go Crypto: golang.org/x/crypto
+  Copyright (c) 2009 The Go Authors. All rights reserved.
+  License: BSD-3-Clause
+
+- Go Runtime: golang.org
+  Copyright (c) 2009 The Go Authors. All rights reserved.
+  License: BSD-3-Clause
+
+- swagger-ui: https://swagger.io/tools/swagger-ui/download
+  Copyright 2020-2021 SmartBear Software Inc.
+  License: Apache-2.0
 `

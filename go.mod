@@ -9,5 +9,5 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.6
 	github.com/rakyll/statik v0.1.7
-	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 )

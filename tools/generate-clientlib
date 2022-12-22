@@ -1,0 +1,12 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
+# SPDX-License-Identifier: MIT
+./openapi-generator-cli \
+    generate \
+    -i ../../ProjectTimeManager2.Api/user-mgr.yaml \
+    -g python \
+    -o ../integration_test \
+    -v \
+    --additional-properties=onlyInterfaces=true,packageName=rest,serverPort=19749,sourceFolder=rest
+
+echo "Merge generated stuff with existing changes"

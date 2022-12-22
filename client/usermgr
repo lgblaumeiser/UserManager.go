@@ -1,0 +1,23 @@
+#!/bin/bash
+# SPDX-FileCopyrightText: 2022 Lars Geyer-Blaumeiser <lars@lgblaumeiser.de>
+# SPDX-License-Identifier: MIT
+
+UMGR_BASE_URL = http://localhost:19749/
+
+authenticate() {
+    STATUS=$(curl -s --write-out %{http_code} -o /tmp/token.txt -X POST $UMGR_BASE_URL/users/authenticate \
+        -H 'Content-Type: application/json' -d '{"username":"${UMGR_USER}","password":"${UMGR_PWD"}')
+    
+    if [ $STATUS -ne 200 ]
+        then
+            echo "Failing authentification: $STATUS"
+            exit 1
+    fi
+
+    cat /tmp/token.txt | jq -r '.access_token' > ~/.usrmgr/token
+    chmod 600 ~/.usrmgr/token
+    cat /tmp/token.txt | jq -r '.refresh_token' > ~/.usrmgr/refresh
+    chmod 600 ~/.usrmgr/refresh
+
+    rm /tmp/token.txt
+}
